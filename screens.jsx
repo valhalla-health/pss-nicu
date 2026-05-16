@@ -15,9 +15,10 @@ function greeting() {
 
 // ===== LOGIN =======================================================
 function LoginScreen({ onLogin, lang }) {
-  const [loading, setLoading] = uS(false);     // verifying with backend
-  const [clicked, setClicked] = uS(false);     // user clicked, awaiting Google callback
+  const [loading, setLoading] = uS(false);
+  const [clicked, setClicked] = uS(false);
   const [error, setError]     = uS(null);
+  const [googleReady, setGoogleReady] = uS(false);
   const btnRef = React.useRef(null);
 
   // Safety reset: if user cancels Google popup, restore button after 500ms of focus return
@@ -59,6 +60,7 @@ function LoginScreen({ onLogin, lang }) {
         type: 'standard', shape: 'pill', theme: 'outline',
         text: 'signin_with', locale: 'th', size: 'large', width: 280
       });
+      setGoogleReady(true);
     };
     if (window.google?.accounts?.id) { init(); }
     else { window.addEventListener('load', init, { once: true }); }
@@ -152,9 +154,22 @@ function LoginScreen({ onLogin, lang }) {
           ประเมินความเครียดผู้ปกครอง · หอผู้ป่วยทารกแรกเกิด
         </div>
 
-        {/* Sign-in — keep btnRef mounted so Google can render & process click;
-            overlay our spinner on top once user clicks to hide Google's own loading UI */}
+        {/* Sign-in */}
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', minHeight: 44 }}>
+          {/* Skeleton — แสดงขณะ Google SDK ยังไม่โหลด */}
+          {!googleReady && !isBusy && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              background: 'var(--card)', borderRadius: 99, border: '1px solid var(--line)',
+              fontSize: 13, color: 'var(--ink-4)',
+              animation: 'pulse-soft 1.6s ease infinite',
+              pointerEvents: 'none',
+            }}>
+              <div style={{ width: 18, height: 18, borderRadius: 4, background: 'var(--paper-3)' }} />
+              <span>กำลังโหลด...</span>
+            </div>
+          )}
           <div
             ref={btnRef}
             onClickCapture={() => setClicked(true)}
@@ -250,6 +265,7 @@ const daysIn = (admitDate, dayAdmit) => { if (admitDate) { const d = Math.floor(
 
 // ===== GLOBAL SEARCH ==============================================
 function GlobalSearch({ families, assessments, thresholds, onOpen, onClose }) {
+  const isMobile = useIsMobile();
   const [q, setQ] = uS('');
   const [cursor, setCursor] = uS(0);
   const inputRef = React.useRef(null);
@@ -297,7 +313,9 @@ function GlobalSearch({ families, assessments, thresholds, onOpen, onClose }) {
 
       {/* Modal */}
       <div className="scale-in" style={{
-        position: 'fixed', top: '14vh', left: '50%', transform: 'translateX(-50%)',
+        position: 'fixed',
+        top: 'max(60px, 8vh)',
+        left: '50%', transform: 'translateX(-50%)',
         width: 'calc(100% - 32px)', maxWidth: 560,
         background: 'var(--card)', borderRadius: 18,
         boxShadow: '0 28px 80px rgba(60,40,20,.22), 0 2px 8px rgba(60,40,20,.06)',
@@ -326,7 +344,7 @@ function GlobalSearch({ families, assessments, thresholds, onOpen, onClose }) {
         </div>
 
         {/* Results list */}
-        <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+        <div style={{ maxHeight: isMobile ? 280 : 360, overflowY: 'auto' }}>
           {!q && <div style={{ padding: '8px 20px 4px', fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>ครอบครัวทั้งหมด ({families.length} ราย)</div>}
           {q && results.length === 0 && (
             <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
@@ -365,11 +383,12 @@ function GlobalSearch({ families, assessments, thresholds, onOpen, onClose }) {
           })}
         </div>
 
-        {/* Keyboard hints */}
+        {/* Keyboard hints — desktop only */}
         <div style={{ padding: '8px 20px', borderTop: '1px solid var(--line-soft)', display: 'flex', gap: 16, fontSize: 11, color: 'var(--ink-4)' }}>
-          <span>↑↓ เลื่อน</span>
-          <span>↵ เปิด</span>
-          <span>Esc ปิด</span>
+          {isMobile
+            ? <span>แตะเพื่อเปิด · กด ✕ เพื่อปิด</span>
+            : <><span>↑↓ เลื่อน</span><span>↵ เปิด</span><span>Esc ปิด</span></>
+          }
         </div>
       </div>
     </>
@@ -851,11 +870,11 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
               <Icon name="baby" size={12} /> {fam.dx}
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
             <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>คะแนนล่าสุด</div>
-            <div className="serif" style={{ fontSize: 56, lineHeight: 1, color: sev.color, marginTop: 4 }}>
+            <div className="serif" style={{ fontSize: isMobile ? 40 : 56, lineHeight: 1, color: sev.color, marginTop: 4 }}>
               {last ? last.total : '—'}
-              <span style={{ fontSize: 18, color: 'var(--ink-4)', marginLeft: 4, fontFamily: 'var(--mono)' }}>/104</span>
+              <span style={{ fontSize: isMobile ? 14 : 18, color: 'var(--ink-4)', marginLeft: 4, fontFamily: 'var(--mono)' }}>/104</span>
             </div>
             <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
               {last ? `${fmtDate(last.date)} · ${fmtBy(last.by)}` : 'ยังไม่มีการประเมิน'}
@@ -1431,11 +1450,11 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
           </p>
 
           {/* Scale legend */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 20, fontSize: 10, color: 'var(--ink-3)', textAlign: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 20, fontSize: isMobile ? 10 : 11, color: 'var(--ink-3)', textAlign: 'center' }}>
             {STRESS_LEVELS.map((l) =>
-          <div key={l.v} style={{ padding: '6px 4px', background: 'var(--paper-2)', borderRadius: 8 }}>
-                <div className="mono" style={{ fontSize: 14, color: 'var(--ink-2)', fontWeight: 700 }}>{l.v}</div>
-                <div style={{ marginTop: 2 }}>{l.th}</div>
+          <div key={l.v} style={{ padding: isMobile ? '8px 2px' : '6px 4px', background: 'var(--paper-2)', borderRadius: 8 }}>
+                <div className="mono" style={{ fontSize: isMobile ? 15 : 14, color: 'var(--ink-2)', fontWeight: 700 }}>{l.v}</div>
+                <div style={{ marginTop: 3, lineHeight: 1.3 }}>{l.th}</div>
               </div>
           )}
           </div>
@@ -1456,14 +1475,19 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
                 return (
                   <button key={v} onClick={() => setAns(q.id, v)}
                   style={{
-                    padding: '10px 4px', borderRadius: 10,
+                    padding: isMobile ? '13px 4px' : '10px 4px',
+                    minHeight: 44,
+                    touchAction: 'manipulation',
+                    borderRadius: 10,
                     border: '1.5px solid ' + (sel ? SUBSCALE_META[sectionMeta].color : 'var(--line)'),
                     background: sel ? SUBSCALE_META[sectionMeta].color : 'var(--card)',
                     color: sel ? '#fff' : 'var(--ink-2)',
                     fontWeight: 700,
-                    transition: 'all .12s'
+                    transition: 'all .12s',
+                    transform: sel ? 'scale(1.06)' : 'scale(1)',
+                    boxShadow: sel ? `0 2px 8px ${SUBSCALE_META[sectionMeta].color}44` : 'none',
                   }}>
-                        <div style={{ fontSize: 16 }}>{v}</div>
+                        <div style={{ fontSize: isMobile ? 18 : 16 }}>{v}</div>
                       </button>);
               })}
                 </div>

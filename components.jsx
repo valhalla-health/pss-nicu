@@ -480,7 +480,7 @@ function TopNav({ user, route, onRoute, lang, onLangToggle, alertCount, onLogout
         <Avatar initials={nameToInitials(user.name || user.email)} size={isCompact ? 30 : 36}
         palette={user.role === 'doctor' ? 'terracotta' : user.role === 'admin' ? 'plum' : 'sage'} />
         {onLogout &&
-        <button onClick={onLogout} title="ออกจากระบบ"
+        <button onClick={onLogout} title={isCompact ? 'ออกจากระบบ' : undefined}
         style={{
           display: 'flex', alignItems: 'center', gap: isCompact ? 0 : 6,
           padding: isCompact ? '7px 8px' : '7px 13px', borderRadius: 99,

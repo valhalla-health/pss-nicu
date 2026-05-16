@@ -255,45 +255,48 @@ function App() {
 
   if (!user) return <LoginScreen onLogin={setUser} lang={lang} />;
 
-  if (loading) return (
-    <div style={{ background: 'var(--paper)', minHeight: '100vh' }}>
-      {/* Skeleton TopNav */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 28px', background: 'var(--card)', borderBottom: '1px solid var(--line)' }}>
-        <SkeletonBlock w={130} h={32} r={8} />
-        {[90, 100, 80, 90].map((w, i) => <SkeletonBlock key={i} w={w} h={32} r={99} />)}
-        <div style={{ flex: 1 }} />
-        <SkeletonBlock w={110} h={32} r={99} />
-        <SkeletonBlock w={36} h={36} r={99} />
-        <SkeletonBlock w={80} h={32} r={99} />
-      </div>
-      {/* Skeleton Dashboard */}
-      <div style={{ padding: '32px 28px', maxWidth: 1400, margin: '0 auto' }}>
-        <SkeletonBlock w="36%" h={44} r={8} />
-        <div style={{ marginTop: 10, marginBottom: 28 }}><SkeletonBlock w="22%" h={16} r={6} /></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
-          {[0,1,2,3].map(i => (
-            <div key={i} className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <SkeletonBlock w="55%" h={11} r={4} />
-              <SkeletonBlock w="40%" h={40} r={6} />
-              <SkeletonBlock w="65%" h={11} r={4} />
+  if (loading) {
+    const isMob = window.innerWidth <= 640;
+    return (
+      <div style={{ background: 'var(--paper)', minHeight: '100vh' }}>
+        {/* Skeleton TopNav */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMob ? 8 : 16, padding: isMob ? '10px 14px' : '14px 28px', background: 'var(--card)', borderBottom: '1px solid var(--line)' }}>
+          <SkeletonBlock w={isMob ? 28 : 130} h={32} r={8} />
+          {(isMob ? [40,40,40,40] : [90,100,80,90]).map((w, i) => <SkeletonBlock key={i} w={w} h={32} r={99} />)}
+          <div style={{ flex: 1 }} />
+          <SkeletonBlock w={isMob ? 32 : 110} h={32} r={99} />
+          <SkeletonBlock w={isMob ? 30 : 36} h={isMob ? 30 : 36} r={99} />
+          {!isMob && <SkeletonBlock w={80} h={32} r={99} />}
+        </div>
+        {/* Skeleton Dashboard */}
+        <div style={{ padding: isMob ? '20px 16px' : '32px 28px', maxWidth: 1400, margin: '0 auto' }}>
+          <SkeletonBlock w={isMob ? '70%' : '36%'} h={isMob ? 32 : 44} r={8} />
+          <div style={{ marginTop: 10, marginBottom: 28 }}><SkeletonBlock w="22%" h={16} r={6} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMob ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <SkeletonBlock w="55%" h={11} r={4} />
+                <SkeletonBlock w="40%" h={40} r={6} />
+                <SkeletonBlock w="65%" h={11} r={4} />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMob ? '1fr' : '1.4fr 1fr', gap: 20 }}>
+            <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <SkeletonBlock w="50%" h={14} r={5} />
+              <SkeletonBlock w="65%" h={22} r={6} />
+              {[0,1,2,3,4].map(i => <SkeletonBlock key={i} h={44} r={12} />)}
             </div>
-          ))}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 }}>
-          <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <SkeletonBlock w="50%" h={14} r={5} />
-            <SkeletonBlock w="65%" h={22} r={6} />
-            {[0,1,2,3,4].map(i => <SkeletonBlock key={i} h={44} r={12} />)}
-          </div>
-          <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <SkeletonBlock w="50%" h={14} r={5} />
-            <SkeletonBlock w="65%" h={22} r={6} />
-            {[0,1,2,3].map(i => <SkeletonBlock key={i} h={36} r={8} />)}
+            {!isMob && <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <SkeletonBlock w="50%" h={14} r={5} />
+              <SkeletonBlock w="65%" h={22} r={6} />
+              {[0,1,2,3].map(i => <SkeletonBlock key={i} h={36} r={8} />)}
+            </div>}
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (loadError) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: 'var(--paper)', padding: 24 }}>
@@ -391,7 +394,7 @@ function App() {
           <AnalyticsScreen families={families} assessments={assessments} lang={lang} thresholds={thresholds} />
         )}
         {route === 'admin' && (
-          <AdminScreen families={families} assessments={assessments} lang={lang} thresholds={thresholds} />
+          <AdminScreen families={families} assessments={assessments} lang={lang} thresholds={thresholds} user={user} />
         )}
       </main>
 
@@ -415,7 +418,10 @@ function App() {
           onClick={() => newAss(openFamId)}
           title="บันทึกด่วน"
           style={{
-            position: 'fixed', bottom: 28, right: 28, zIndex: 900,
+            position: 'fixed',
+            bottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
+            right: 'max(28px, env(safe-area-inset-right, 28px))',
+            zIndex: 900,
             width: 52, height: 52, borderRadius: '50%',
             background: 'var(--terracotta)', color: '#fff',
             border: 'none', cursor: 'pointer',

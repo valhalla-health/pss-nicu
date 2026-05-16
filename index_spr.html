@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#fbf6ef">
   <title>PSS:NICU — โรงพยาบาลสวรรค์ประชารักษ์</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,7 +71,7 @@
     h3 { font-size: 20px; line-height: 1.25; }
     h4 { font-size: 16px; line-height: 1.25; font-family: var(--sans); font-weight: 700; letter-spacing: 0; }
     p { margin: 0; color: var(--ink-2); line-height: 1.5; }
-    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0); }
     input, select, textarea { font-family: inherit; color: inherit; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r3); box-shadow: var(--sh1); }
     .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; border: 1px solid var(--line); background: var(--paper-2); color: var(--ink-2); }
@@ -103,10 +107,13 @@
     .sev-mod     { color: var(--sev-mod); }    .bg-sev-mod     { background: rgba(214,138,94,.14);  color: var(--sev-mod); }
     .sev-high    { color: var(--sev-high); }   .bg-sev-high    { background: rgba(179,80,62,.12);   color: var(--sev-high); }
     .sev-extreme { color: var(--sev-extreme); } .bg-sev-extreme { background: rgba(111,59,88,.12);   color: var(--sev-extreme); }
+    @media (max-width: 1024px) { .nav-label { display: none !important; } }
     @media (max-width: 640px) {
       .btn { min-height: 44px !important; }
-      .nav-label { display: none !important; }
-      .pss-sticky-cta { position: fixed !important; bottom: 0; left: 0; right: 0; display: flex !important; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) !important; background: rgba(251,246,239,0.96); backdrop-filter: blur(14px); border-top: 1px solid var(--line); z-index: 200; justify-content: space-between !important; }
+      input, select, textarea { font-size: 16px !important; }
+      h1 { font-size: 26px !important; }
+      h2 { font-size: 20px !important; }
+      .pss-sticky-cta { position: fixed !important; bottom: 0; left: 0; right: 0; display: flex !important; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) !important; background: rgba(251,246,239,0.96); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); z-index: 200; justify-content: space-between !important; }
       .pss-sticky-cta .btn { flex: 1; }
       .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 499; }
       .bottom-sheet { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; border-radius: 20px 20px 0 0 !important; padding: 24px 20px calc(24px + env(safe-area-inset-bottom)) !important; max-height: 90vh; overflow-y: auto; z-index: 500; margin-bottom: 0 !important; }
@@ -121,7 +128,7 @@
   <script>
     // ── SPR Config ─────────────────────────────────────────────────
     window.PSS_CLIENT_ID = '658466851314-fq13cdqd608e4lp8tbv3n4me443b2fb0.apps.googleusercontent.com';
-    window.PSS_API_URL   = 'https://script.google.com/macros/s/AKfycbxcEg4T3K53yVdcL97F1AW_Up1FQKemd16UPQvSGPz-3W19avrb_N9wx8VUkC9Fym41/exec';
+    window.PSS_API_URL   = 'https://script.google.com/macros/s/AKfycbyhBtJo7ZyRY1ewNLk4BBvdzrqEm3sHbdZc1tH300-dQBToJcxhG5HvCjATPVjKu3kN/exec';
 
     // เตียง รพ.สวรรค์ประชารักษ์ — แก้ให้ตรงกับหอ NICU จริง
     window.PSS_BEDS = [

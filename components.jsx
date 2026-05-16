@@ -375,6 +375,9 @@ function fmtBy(by) { return by ? (by.includes('@') ? by.split('@')[0] : by) : ''
 
 // --- Top nav ------------------------------------------------------
 function TopNav({ user, route, onRoute, lang, onLangToggle, alertCount, onLogout, onSearch }) {
+  const isMobile = useIsMobile(640);
+  const isCompact = useIsMobile(1024);
+
   const items = [
   { k: 'dashboard',  icon: 'home',  label: t('nav_dashboard', lang) },
   { k: 'families',   icon: 'users', label: t('nav_families', lang) },
@@ -384,38 +387,44 @@ function TopNav({ user, route, onRoute, lang, onLangToggle, alertCount, onLogout
 
   return (
     <header style={{
-      display: 'flex', alignItems: 'center', gap: 24,
-      padding: '14px 28px',
-      background: 'rgba(251,246,239,0.85)',
+      display: 'flex', alignItems: 'center',
+      gap: isMobile ? 6 : isCompact ? 10 : 24,
+      padding: isMobile ? '10px 14px' : isCompact ? '12px 20px' : '14px 28px',
+      background: 'rgba(251,246,239,0.92)',
       backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       borderBottom: '1px solid var(--line)',
       position: 'sticky', top: 0, zIndex: 50
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Icon name="logo" size={32} />
-        <div style={{ lineHeight: 1.1 }}>
-          <div className="serif" style={{ fontSize: 18, fontWeight: 600 }}>PSS:NICU</div>
-          <div style={{ fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>MILD MIND</div>
-        </div>
+      {/* Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <Icon name="logo" size={isCompact ? 26 : 32} />
+        {!isCompact && (
+          <div style={{ lineHeight: 1.1 }}>
+            <div className="serif" style={{ fontSize: 18, fontWeight: 600 }}>PSS:NICU</div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>MILD MIND</div>
+          </div>
+        )}
       </div>
 
-      <nav style={{ display: 'flex', gap: 4, marginLeft: 16 }}>
+      {/* Nav */}
+      <nav style={{ display: 'flex', gap: 2, marginLeft: isCompact ? 2 : 16 }}>
         {items.map((it) => {
           const active = route === it.k;
           return (
             <button key={it.k} onClick={() => onRoute(it.k)}
             style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px 14px',
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: isCompact ? '8px 9px' : '8px 14px',
               borderRadius: 99,
               fontSize: 13, fontWeight: 600,
               color: active ? 'var(--terracotta)' : 'var(--ink-2)',
               background: active ? 'var(--peach-soft)' : 'transparent',
               transition: 'all .15s',
-              position: 'relative', justifyContent: "center", textAlign: "center"
+              position: 'relative', justifyContent: 'center', textAlign: 'center'
             }}>
-              <Icon name={it.icon} size={16} />
-              <span className="nav-label">{it.label}</span>
+              <Icon name={it.icon} size={isCompact ? 18 : 16} />
+              {!isCompact && <span className="nav-label">{it.label}</span>}
               {it.badge > 0 &&
               <span style={{
                 background: 'var(--rose)', color: '#fff',
@@ -424,54 +433,57 @@ function TopNav({ user, route, onRoute, lang, onLangToggle, alertCount, onLogout
               }}>{it.badge}</span>
               }
             </button>);
-
         })}
       </nav>
 
       <div style={{ flex: 1 }} />
 
+      {/* Search */}
       {onSearch && (
         <button onClick={onSearch}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '7px 13px', borderRadius: 99,
+            display: 'flex', alignItems: 'center', gap: isCompact ? 0 : 8,
+            padding: isCompact ? '8px 10px' : '7px 13px', borderRadius: 99,
             border: '1px solid var(--line)',
             fontSize: 13, fontWeight: 500,
             color: 'var(--ink-3)',
             background: 'var(--card)',
             transition: 'all .15s',
-            marginRight: 6,
+            marginRight: isCompact ? 2 : 6,
           }}>
           <Icon name="search" size={15} color="var(--ink-3)" />
-          <span className="nav-label">ค้นหา</span>
-          <kbd style={{
+          {!isCompact && <span>ค้นหา</span>}
+          {!isCompact && <kbd style={{
             fontSize: 10, padding: '1px 5px',
             background: 'var(--paper-2)', border: '1px solid var(--line)',
             borderRadius: 4, fontFamily: 'var(--mono)', color: 'var(--ink-4)',
-          }}>⌘K</kbd>
+          }}>⌘K</kbd>}
         </button>
       )}
 
-<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ textAlign: 'right', lineHeight: 1.2 }}>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>{user.name || fmtBy(user.email)}</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            <span style={{
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-              color: user.role === 'doctor' ? 'var(--terracotta)' :
-              user.role === 'admin' ? 'var(--plum)' :
-              'var(--sage)',
-              fontWeight: 700
-            }}>{ROLE_TH[user.role] || user.role}</span>
+      {/* User section */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isCompact ? 6 : 10, flexShrink: 0 }}>
+        {!isCompact && (
+          <div style={{ textAlign: 'right', lineHeight: 1.2 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{user.name || fmtBy(user.email)}</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              <span style={{
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                color: user.role === 'doctor' ? 'var(--terracotta)' :
+                user.role === 'admin' ? 'var(--plum)' :
+                'var(--sage)',
+                fontWeight: 700
+              }}>{ROLE_TH[user.role] || user.role}</span>
+            </div>
           </div>
-        </div>
-        <Avatar initials={nameToInitials(user.name || user.email)} size={36}
+        )}
+        <Avatar initials={nameToInitials(user.name || user.email)} size={isCompact ? 30 : 36}
         palette={user.role === 'doctor' ? 'terracotta' : user.role === 'admin' ? 'plum' : 'sage'} />
         {onLogout &&
         <button onClick={onLogout} title="ออกจากระบบ"
         style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '7px 13px', borderRadius: 99,
+          display: 'flex', alignItems: 'center', gap: isCompact ? 0 : 6,
+          padding: isCompact ? '7px 8px' : '7px 13px', borderRadius: 99,
           border: '1px solid var(--line)',
           fontSize: 12, fontWeight: 600,
           color: 'var(--ink-3)',
@@ -481,7 +493,7 @@ function TopNav({ user, route, onRoute, lang, onLangToggle, alertCount, onLogout
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
           </svg>
-          ออกจากระบบ
+          {!isCompact && 'ออกจากระบบ'}
         </button>
         }
       </div>
@@ -524,9 +536,60 @@ function StatCard({ label, value, suffix, hint, accent = 'var(--terracotta)', ch
 
 // --- Family card (list row) ---------------------------------------
 function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
+  const isMobile = useIsMobile();
   const sev = severity(lastAss?.total, thresholds);
   const flag = lastAss && trend && trend.length >= 2 && trend[trend.length - 1] > trend[trend.length - 2];
   const pillM = sevPill(sev, lang);
+
+  const s = String(fam.bed || '');
+  const lbl = s.startsWith('iso ') ? s.slice(4) : s;
+  const days = fam.admitDate
+    ? Math.max(1, Math.floor((Date.now() - new Date(fam.admitDate)) / 86400000) + 1)
+    : (Number(fam.dayAdmit) || null);
+  const dateStr = fam.admitDate
+    ? new Date(fam.admitDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })
+    : null;
+
+  if (isMobile) {
+    const avSz = 40;
+    return (
+      <button onClick={onOpen}
+        style={{
+          width: '100%', textAlign: 'left',
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 14px',
+          background: 'var(--card)',
+          border: '1px solid var(--line)',
+          borderLeft: `3px solid ${sev.color}`,
+          borderRadius: 'var(--r3)',
+          boxShadow: 'var(--sh1)',
+          transition: 'box-shadow .12s ease',
+        }}>
+        <Avatar initials={lbl} size={avSz} _fontSize={lbl.length > 3 ? avSz * 0.26 : avSz * 0.38}
+          palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : sev.key === 'mod' ? 'terracotta' : 'sage'} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>เตียง {fam.bed}</span>
+            {days && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', background: 'var(--paper-3)', padding: '1px 5px', borderRadius: 99 }}>D{days}</span>}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {fam.relation} · GA {fam.ga}wk · BW {fam.bw}g
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span className="serif" style={{ fontSize: 20, color: sev.color, lineHeight: 1 }}>{lastAss ? lastAss.total : '—'}</span>
+            <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: 'var(--mono)' }}>/104</span>
+            {flag && <Icon name="trend-up" size={12} color="var(--rose)" />}
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 700, color: sev.color, letterSpacing: '0.02em' }}>{pillM.label}</span>
+        </div>
+        <Icon name="arrow-right" size={16} color="var(--ink-4)" style={{ flexShrink: 0 }} />
+      </button>
+    );
+  }
+
+  const sz = dense ? 36 : 44;
   return (
     <button onClick={onOpen}
     style={{
@@ -543,13 +606,8 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
     }}
     onMouseEnter={(e) => {e.currentTarget.style.boxShadow = 'var(--sh2)';e.currentTarget.style.transform = 'translateY(-1px)';}}
     onMouseLeave={(e) => {e.currentTarget.style.boxShadow = 'var(--sh1)';e.currentTarget.style.transform = 'none';}}>
-      {(() => {
-        const s = String(fam.bed || '');
-        const lbl = s.startsWith('iso ') ? s.slice(4) : s;
-        const sz = dense ? 36 : 44;
-        return <Avatar initials={lbl} size={sz} _fontSize={lbl.length > 3 ? sz * 0.26 : sz * 0.38}
-          palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : sev.key === 'mod' ? 'terracotta' : 'sage'} />;
-      })()}
+      <Avatar initials={lbl} size={sz} _fontSize={lbl.length > 3 ? sz * 0.26 : sz * 0.38}
+        palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : sev.key === 'mod' ? 'terracotta' : 'sage'} />
 
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: dense ? 14 : 15, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>
@@ -562,21 +620,11 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
 
       <div>
         <div style={{ fontSize: 11, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>{t('day', lang)}</div>
-        {(() => {
-          const days = fam.admitDate
-            ? Math.max(1, Math.floor((Date.now() - new Date(fam.admitDate)) / 86400000) + 1)
-            : (Number(fam.dayAdmit) || null);
-          const dateStr = fam.admitDate
-            ? new Date(fam.admitDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })
-            : null;
-          return (
-            <div>
-              {days && <span style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>D{days}</span>}
-              {dateStr && <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 1 }}>{dateStr}</div>}
-              {!days && !dateStr && <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--ink-3)' }}>—</span>}
-            </div>
-          );
-        })()}
+        <div>
+          {days && <span style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>D{days}</span>}
+          {dateStr && <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 1 }}>{dateStr}</div>}
+          {!days && !dateStr && <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--ink-3)' }}>—</span>}
+        </div>
       </div>
 
       <div>
@@ -641,9 +689,13 @@ function ToastContainer() {
   if (!toasts.length) return null;
   return (
     <div style={{
-      position: 'fixed', bottom: 24, right: 24, zIndex: 1000,
+      position: 'fixed',
+      bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+      right: 'max(16px, env(safe-area-inset-right, 16px))',
+      zIndex: 1000,
       display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end',
       pointerEvents: 'none',
+      maxWidth: 'calc(100vw - 32px)',
     }}>
       {toasts.map(t => (
         <div key={t.id} style={{ pointerEvents: 'auto' }}>

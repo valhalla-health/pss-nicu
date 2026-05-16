@@ -409,9 +409,16 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
   const priorityList = [...enriched].filter((e) => e.last).sort((a, b) => b.last.total - a.last.total).slice(0, 5);
 
   return (
-    <div style={{ padding: '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Welcome */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28 }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'flex-start' : 'flex-end',
+        gap: isMobile ? 12 : 0,
+        marginBottom: 28
+      }}>
         <div>
           <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8 }}>
             {new Date(TODAY).toLocaleDateString('th-TH', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
@@ -598,7 +605,7 @@ function AddFamilyForm({ onSave, onCancel, lang, isMobile }) {
     <div className={`card scale-in${isMobile ? ' bottom-sheet' : ''}`} style={{ padding: 28, marginBottom: isMobile ? 0 : 24 }}>
       <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 20 }}>เพิ่มครอบครัวใหม่</div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 16 }}>
         <div>
           <label style={labelStyle}>เตียง *</label>
           <select value={f.bed} onChange={e => set('bed', e.target.value)} style={inputStyle}>
@@ -690,7 +697,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
   { k: 'new',    label: 'รายใหม่ (≤3 วัน)',  count: enriched.filter((e) => e.fam.dayAdmit <= 3).length }];
 
   return (
-    <div style={{ padding: '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
       <SectionHeading
         eyebrow={`${families.length} ราย`}
         title={<span>ครอบครัว <em style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>ในความดูแล</em></span>}
@@ -710,8 +717,9 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
       )}
 
       {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 12, marginBottom: 18, height: 44 }}>
-        <div style={{ flex: 1, position: 'relative' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'stretch', gap: isMobile ? 8 : 12, marginBottom: 18 }}>
+        {/* Search */}
+        <div style={{ flex: isMobile ? undefined : 1, position: 'relative', height: 44 }}>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาเตียง หรือ HN"
           style={{
             width: '100%', height: '100%', padding: '0 14px 0 40px',
@@ -723,30 +731,37 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: 3 }}>
-          {filters.map((f) =>
-          <button key={f.k} onClick={() => setFilter(f.k)}
-          style={{
-            padding: '0 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-            background: filter === f.k ? 'var(--peach-soft)' : 'transparent',
-            color: filter === f.k ? 'var(--terracotta)' : 'var(--ink-2)',
-            display: 'flex', alignItems: 'center', gap: 6
+        {/* Filters + Sort */}
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, height: 44 }}>
+          <div style={{
+            flex: 1, display: 'flex', alignItems: 'stretch',
+            background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: 3,
+            overflowX: 'auto', WebkitOverflowScrolling: 'touch',
           }}>
-              {f.label}
-              <span style={{ fontSize: 10, color: filter === f.k ? 'var(--terracotta)' : 'var(--ink-4)', fontFamily: 'var(--mono)' }}>{f.count}</span>
-            </button>
-          )}
-        </div>
+            {filters.map((f) =>
+            <button key={f.k} onClick={() => setFilter(f.k)}
+            style={{
+              padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              background: filter === f.k ? 'var(--peach-soft)' : 'transparent',
+              color: filter === f.k ? 'var(--terracotta)' : 'var(--ink-2)',
+              display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0,
+            }}>
+                {f.label}
+                <span style={{ fontSize: 10, color: filter === f.k ? 'var(--terracotta)' : 'var(--ink-4)', fontFamily: 'var(--mono)' }}>{f.count}</span>
+              </button>
+            )}
+          </div>
 
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
-        style={{ height: '100%', padding: '0 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--card)', fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}>
-          <option value="risk">เรียงตาม: ความเสี่ยง</option>
-          <option value="bed">เรียงตาม: เตียง</option>
-          <option value="day">เรียงตาม: วันที่รับไว้</option>
-        </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+          style={{ height: '100%', padding: '0 10px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--card)', fontSize: 13, fontWeight: 600, boxSizing: 'border-box', flexShrink: 0 }}>
+            <option value="risk">ความเสี่ยง</option>
+            <option value="bed">เตียง</option>
+            <option value="day">วันที่รับไว้</option>
+          </select>
+        </div>
       </div>
 
-      <div style={{
+      {!isMobile && <div style={{
         padding: '0 20px 8px', fontSize: 10, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600,
         display: 'grid', gap: density === 'compact' ? 12 : 18,
         gridTemplateColumns: 'auto 1.6fr 1fr 1.2fr 1.5fr auto',
@@ -758,7 +773,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
         <span>{t('last', lang)} {t('score', lang)}</span>
         <span>{t('trend', lang)} · {t('risk', lang)}</span>
         <span></span>
-      </div>
+      </div>}
 
       {sorted.length === 0 && (
         <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--ink-3)', border: '1px dashed var(--line)', borderRadius: 14, marginTop: 8 }}>
@@ -805,7 +820,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
 
   if (!fam) return null;
   return (
-    <div style={{ padding: '24px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px 16px 80px' : '24px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Breadcrumb */}
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-3)', marginBottom: 16, fontWeight: 600 }}>
         <Icon name="arrow-left" size={14} /> {t('back', lang)}
@@ -825,7 +840,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
               <SeverityBadge severity={sev} lang={lang} />
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
-              <h1 className="serif" style={{ fontSize: 32 }}>เตียง {fam.bed}</h1>
+              <h1 className="serif" style={{ fontSize: isMobile ? 24 : 32 }}>เตียง {fam.bed}</h1>
               {(() => { const d = daysIn(fam.admitDate, fam.dayAdmit); return d ? <span style={{ fontSize: 14, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>D{d}</span> : null; })()}
             </div>
             <div style={{ fontSize: 14, color: 'var(--ink-3)', marginBottom: 4 }}>
@@ -848,7 +863,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 20, position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 20, position: 'relative', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={onNewAssessment}>
             <Icon name="plus" size={14} /> {t('new_assessment', lang)}
           </button>
@@ -893,7 +908,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {[
         { k: 'overview', label: t('overview', lang) },
         { k: 'history',  label: 'ประวัติการประเมิน' },
@@ -1371,18 +1386,18 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
       </div>
 
       {/* Stepper */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 24 }}>
         {stepLabels.map((s, i) => {
           const done = i < step;
           const active = i === step;
           return (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div style={{ height: 4, borderRadius: 99, background: active ? 'var(--terracotta)' : done ? 'var(--sage)' : 'var(--line)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: active ? 'var(--ink)' : 'var(--ink-3)', fontWeight: active ? 700 : 500 }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: active ? 'var(--terracotta)' : done ? 'var(--sage)' : 'var(--paper-3)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: isMobile ? 10 : 11, color: active ? 'var(--ink)' : 'var(--ink-3)', fontWeight: active ? 700 : 500 }}>
+                <span style={{ width: 16, height: 16, borderRadius: '50%', background: active ? 'var(--terracotta)' : done ? 'var(--sage)' : 'var(--paper-3)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
                   {done ? '✓' : s.code}
                 </span>
-                <span>{s.label}</span>
+                {!isMobile && <span>{s.label}</span>}
               </div>
             </div>);
         })}
@@ -1459,8 +1474,8 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
       }
 
       {reviewing &&
-      <div className="card scale-in" style={{ padding: 28, marginBottom: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+      <div className="card scale-in" style={{ padding: isMobile ? 20 : 28, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 16 : 24, marginBottom: 24 }}>
             <div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>คะแนนรวม</div>
               <div className="serif" style={{ fontSize: 64, lineHeight: 1, color: sev.color, marginTop: 6 }}>
@@ -1490,14 +1505,14 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
       {/* Nav — sticky on mobile */}
       <div className={isMobile ? 'pss-sticky-cta' : undefined}
         style={isMobile ? {} : { display: 'flex', justifyContent: 'space-between' }}>
-        <button className="btn btn-ghost" onClick={() => step === 0 ? onBack() : setStep(step - 1)}>
+        <button className="btn btn-ghost" onClick={() => { step === 0 ? onBack() : setStep(step - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
           <Icon name="arrow-left" size={14} /> {step === 0 ? t('cancel', lang) : t('prev', lang)}
         </button>
         {!reviewing ?
         <button className="btn btn-primary"
         disabled={!allAnswered(sectionMeta)}
         style={{ opacity: allAnswered(sectionMeta) ? 1 : 0.5, cursor: allAnswered(sectionMeta) ? 'pointer' : 'not-allowed' }}
-        onClick={() => setStep(step + 1)}>
+        onClick={() => { setStep(step + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
             {t('next', lang)} <Icon name="arrow-right" size={14} />
           </button> :
         <button className="btn btn-primary" onClick={() => { localStorage.removeItem(DRAFT_KEY(famId)); onSubmit({ totals, total, notes, sev, answers, famId }); }}>
@@ -1613,18 +1628,19 @@ function exportAssessmentPDF(fam, ass, thresholds) {
 
 // ===== RESULT / SUMMARY ===========================================
 function ResultScreen({ result, fam, lang, thresholds, onDone, onView }) {
+  const isMobile = useIsMobile();
   const sev = result.sev;
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-      <div className="card scale-in" style={{ maxWidth: 640, width: '100%', padding: 40, textAlign: 'center', background: `linear-gradient(180deg, ${sev.color}08, var(--card))` }}>
-        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--sage-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-          <Icon name="check" size={40} color="var(--sage)" stroke={2.5} />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '24px 16px' : 40 }}>
+      <div className="card scale-in" style={{ maxWidth: 640, width: '100%', padding: isMobile ? '24px 20px' : 40, textAlign: 'center', background: `linear-gradient(180deg, ${sev.color}08, var(--card))` }}>
+        <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--sage-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <Icon name="check" size={36} color="var(--sage)" stroke={2.5} />
         </div>
         <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>บันทึกแล้ว</div>
-        <h2 className="serif" style={{ fontSize: 32, marginTop: 8, marginBottom: 6 }}>บันทึกการประเมินแล้ว</h2>
+        <h2 className="serif" style={{ fontSize: 28, marginTop: 8, marginBottom: 6 }}>บันทึกการประเมินแล้ว</h2>
         <p style={{ color: 'var(--ink-3)' }}>เตียง {fam?.bed} · HN {fam?.infantId}</p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 32, padding: 24, background: 'var(--paper)', borderRadius: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 16 : 20, marginTop: 28, padding: isMobile ? 16 : 24, background: 'var(--paper)', borderRadius: 14 }}>
           <div>
             <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>คะแนนรวม</div>
             <div className="serif" style={{ fontSize: 48, lineHeight: 1, color: sev.color }}>{result.total}<span style={{ fontSize: 16, color: 'var(--ink-4)' }}>/104</span></div>
@@ -1656,6 +1672,7 @@ function ResultScreen({ result, fam, lang, thresholds, onDone, onView }) {
 
 // ===== ALERTS / TRIAGE ============================================
 function AlertsScreen({ families, assessments, lang, thresholds, onOpenFamily }) {
+  const isMobile = useIsMobile();
   const enriched = uM(() => families.map((f) => {
     const fa = assessments.filter((a) => a.famId === f.famId).sort((a, b) => a.date.localeCompare(b.date));
     const last = fa[fa.length - 1];
@@ -1667,7 +1684,7 @@ function AlertsScreen({ families, assessments, lang, thresholds, onOpenFamily })
   const alerts = enriched.filter((e) => e.last && (e.sev.key === 'high' || e.sev.key === 'extreme' || e.isRising));
 
   return (
-    <div style={{ padding: '32px 28px 80px', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1100, margin: '0 auto' }}>
       <SectionHeading
         eyebrow={`${alerts.length} รายการ`}
         title={<span>การแจ้งเตือน <em style={{ fontStyle: 'italic', color: 'var(--rose)' }}>ที่ต้องดำเนินการ</em></span>} />
@@ -1686,6 +1703,7 @@ function AlertsScreen({ families, assessments, lang, thresholds, onOpenFamily })
 }
 
 function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
+  const isMobile = useIsMobile();
   const e = item;
   const sev = e.sev;
   const recs = RECOMMENDATIONS[sev.key] || [];
@@ -1704,7 +1722,7 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${sev.color}` }}>
-      <div style={{ padding: 24, display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 20, alignItems: 'flex-start' }}>
+      <div style={{ padding: isMobile ? 16 : 24, display: 'grid', gridTemplateColumns: isMobile ? 'auto 1fr' : 'auto 1fr auto', gap: isMobile ? 12 : 20, alignItems: 'flex-start' }}>
         <Avatar initials={bedAbbr(e.fam.bed)} size={56} _fontSize={bedFs(e.fam.bed, 56)}
         palette={sev.key === 'extreme' ? 'plum' : 'terracotta'} />
 
@@ -1732,16 +1750,18 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
           }
         </div>
 
-        <div style={{ textAlign: 'right' }}>
-          <div className="serif" style={{ fontSize: 44, lineHeight: 1, color: sev.color }}>{e.last.total}</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>/104</div>
-          <div style={{ marginTop: 8 }}>
-            <MiniTrend values={e.trend} color={sev.color} width={80} height={28} />
+        {!isMobile && (
+          <div style={{ textAlign: 'right' }}>
+            <div className="serif" style={{ fontSize: 44, lineHeight: 1, color: sev.color }}>{e.last.total}</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>/104</div>
+            <div style={{ marginTop: 8 }}>
+              <MiniTrend values={e.trend} color={sev.color} width={80} height={28} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div style={{ padding: '0 24px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ padding: isMobile ? '0 16px 12px' : '0 24px 16px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
         <div>
           <div style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 8 }}>ปัจจัยหลัก</div>
           {topSub &&
@@ -1763,9 +1783,9 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, padding: '14px 24px', background: 'var(--paper)', borderTop: '1px solid var(--line-soft)' }}>
+      <div style={{ display: 'flex', gap: 8, padding: isMobile ? '12px 16px' : '14px 24px', background: 'var(--paper)', borderTop: '1px solid var(--line-soft)', flexWrap: 'wrap' }}>
         <button className="btn btn-primary" onClick={onOpen}><Icon name="eye" size={14} /> ดูรายละเอียด</button>
-        <button className="btn btn-ghost"><Icon name="phone" size={14} /> ติดต่อนักสังคมสงเคราะห์</button>
+        {!isMobile && <button className="btn btn-ghost"><Icon name="phone" size={14} /> ติดต่อนักสังคมสงเคราะห์</button>}
         <button className="btn btn-ghost" onClick={() => setShowNote(v => !v)}
           style={{ color: showNote ? 'var(--terracotta)' : undefined, borderColor: showNote ? 'var(--terracotta)' : undefined }}>
           <Icon name="message" size={14} /> เพิ่มบันทึก
@@ -1804,13 +1824,25 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
 }
 
 // ===== ADMIN ======================================================
-function AdminScreen({ families, assessments, lang, thresholds }) {
+function AdminScreen({ families, assessments, lang, thresholds, user }) {
+  const isMobile = useIsMobile();
   const [tab, setTab] = uS('users');
+  const [staff, setStaff] = uS([]);
+  const [staffLoading, setStaffLoading] = uS(true);
+
+  uE(() => {
+    if (!user?.token || !window.PSS_API_URL) return;
+    fetch(`${window.PSS_API_URL}?action=getStaff&token=${encodeURIComponent(user.token)}`)
+      .then(r => r.json())
+      .then(d => { if (d.status === 'ok') setStaff(d.staff); })
+      .catch(() => {})
+      .finally(() => setStaffLoading(false));
+  }, [user]);
   return (
-    <div style={{ padding: '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
       <SectionHeading eyebrow="การตั้งค่า" title="ผู้ดูแลระบบ" />
 
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {[
         { k: 'users',      label: 'ผู้ใช้งาน' },
         { k: 'thresholds', label: 'ค่าเกณฑ์' },
@@ -1828,7 +1860,8 @@ function AdminScreen({ families, assessments, lang, thresholds }) {
 
       {tab === 'users' &&
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 480 }}>
             <thead>
               <tr style={{ background: 'var(--paper)', borderBottom: '1px solid var(--line)' }}>
                 <th style={{ padding: 14, textAlign: 'left', fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>ผู้ใช้งาน</th>
@@ -1838,25 +1871,36 @@ function AdminScreen({ families, assessments, lang, thresholds }) {
               </tr>
             </thead>
             <tbody>
-              {USERS.map((u) =>
-            <tr key={u.id} style={{ borderBottom: '1px solid var(--line-soft)' }}>
-                  <td style={{ padding: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Avatar initials={u.initials} size={32} palette={u.role === 'doctor' ? 'terracotta' : u.role === 'admin' ? 'plum' : 'sage'} />
-                      <span style={{ fontWeight: 600 }}>{u.name}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: 14 }}>
-                    <span className="pill">{ROLE_TH[u.role] || u.role}</span>
-                  </td>
-                  <td style={{ padding: 14, color: 'var(--ink-3)' }}>{u.dept}</td>
-                  <td style={{ padding: 14, textAlign: 'right' }}>
-                    <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }}>แก้ไข</button>
-                  </td>
-                </tr>
-            )}
+              {staffLoading
+                ? <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: 'var(--ink-4)', fontSize: 13 }}>กำลังโหลด...</td></tr>
+                : staff.length === 0
+                  ? <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: 'var(--ink-4)', fontSize: 13 }}>ไม่พบข้อมูล — เพิ่ม staff ใน Google Sheets โดยตรง</td></tr>
+                  : staff.filter(s => s.active !== false && s.active !== 'FALSE').map((u, i) =>
+                    <tr key={i} style={{ borderBottom: '1px solid var(--line-soft)' }}>
+                      <td style={{ padding: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <Avatar initials={nameToInitials(u.name || u.email)} size={32} palette={u.role === 'doctor' ? 'terracotta' : u.role === 'admin' ? 'plum' : 'sage'} />
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{u.name || fmtBy(u.email)}</div>
+                            <div style={{ fontSize: 11, color: 'var(--ink-4)' }}>{u.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: 14 }}>
+                        <span className="pill">{ROLE_TH[u.role] || u.role}</span>
+                      </td>
+                      <td style={{ padding: 14, color: 'var(--ink-3)' }}>{u.hospitalCode}</td>
+                      <td style={{ padding: 14, textAlign: 'right' }}>
+                        <span style={{ fontSize: 11, color: u.active === true || u.active === 'TRUE' ? 'var(--sage)' : 'var(--ink-4)', fontWeight: 600 }}>
+                          {u.active === true || u.active === 'TRUE' ? '● ใช้งาน' : '○ ระงับ'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+              }
             </tbody>
           </table>
+        </div>
           <div style={{ padding: 16, borderTop: '1px solid var(--line)' }}>
             <button className="btn btn-primary"><Icon name="plus" size={14} /> เพิ่มผู้ใช้งาน</button>
           </div>
@@ -1869,7 +1913,7 @@ function AdminScreen({ families, assessments, lang, thresholds }) {
           <p style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 24 }}>
             ปรับค่าผ่านแผง Tweaks (ปุ่มมุมขวาบน) ค่าปัจจุบันแสดงด้านล่าง
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 16 }}>
             {[
           { label: 'เล็กน้อย ≥', v: thresholds.mild, color: 'var(--sev-mild)' },
           { label: 'ปานกลาง ≥', v: thresholds.mod,  color: 'var(--sev-mod)' },

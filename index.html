@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#fbf6ef">
   <title>PSS:NICU — Clinician Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -120,7 +124,7 @@
 
     p { margin: 0; color: var(--ink-2); line-height: 1.5; }
 
-    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0); }
     input, select, textarea { font-family: inherit; color: inherit; }
 
     /* Reusable card */
@@ -237,13 +241,23 @@
       100% { background-position:   0% 50%; }
     }
 
+    /* ===== Tablet ≤1024px ========================================= */
+    @media (max-width: 1024px) {
+      /* Hide nav text labels — handled by isCompact in TopNav JS too */
+      .nav-label { display: none !important; }
+    }
+
     /* ===== Mobile ≤640px ========================================== */
     @media (max-width: 640px) {
       /* Tap targets ≥44px */
       .btn { min-height: 44px !important; }
 
-      /* TopNav — icon-only, hide text labels */
-      .nav-label { display: none !important; }
+      /* Prevent iOS zoom on input focus (font-size < 16px triggers zoom) */
+      input, select, textarea { font-size: 16px !important; }
+
+      /* Scale headings for small screens */
+      h1 { font-size: 26px !important; }
+      h2 { font-size: 20px !important; }
 
       /* Sticky bottom CTA (AssessmentScreen prev/next) */
       .pss-sticky-cta {
@@ -253,6 +267,7 @@
         padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) !important;
         background: rgba(251,246,239,0.96);
         backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
         border-top: 1px solid var(--line);
         z-index: 200;
         justify-content: space-between !important;

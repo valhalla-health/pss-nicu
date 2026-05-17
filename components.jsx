@@ -577,7 +577,7 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>เตียง {fam.bed}</span>
-            {days && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', background: 'var(--paper-3)', padding: '1px 5px', borderRadius: 99 }}>D{days}</span>}
+            {days && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', background: 'var(--paper-3)', padding: '1px 5px', borderRadius: 99 }}>D {days}</span>}
           </div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {fam.relation} · GA {fam.ga}wk · BW {fam.bw}g
@@ -628,7 +628,7 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
       <div>
         <div style={{ fontSize: 11, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>{t('day', lang)}</div>
         <div>
-          {days && <span style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>D{days}</span>}
+          {days && <span style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>D {days}</span>}
           {dateStr && <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 1 }}>{dateStr}</div>}
           {!days && !dateStr && <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--ink-3)' }}>—</span>}
         </div>

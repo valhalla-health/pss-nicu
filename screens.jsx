@@ -1200,9 +1200,18 @@ function FamilyLogTab({ interv, lang, onSaveIntervention }) {
 const cpChecked = (v) => v === true || v?.checked === true;
 const cpMeta = (v) => (v?.at ? `${fmtBy(v.by)} · ${v.at}` : null);
 
+const OWNER_META = {
+  nurse:  { label: 'พยาบาล',     color: 'var(--ss-color)',    bg: 'var(--ss-bg)' },
+  doctor: { label: 'แพทย์',       color: 'var(--terracotta)',  bg: 'var(--peach-soft)' },
+  sw:     { label: 'Social Work', color: 'var(--sage)',         bg: 'var(--sage-soft)' },
+  psych:  { label: 'จิตวิทยา',    color: 'var(--pr-color)',    bg: 'var(--pr-bg)' },
+};
+
 function CareAndLogTab({ sev, lang, interv, onSaveIntervention, carePlan, onUpdateCarePlan }) {
   const isMobile = useIsMobile();
-  const recs = RECOMMENDATIONS[sev.key] || RECOMMENDATIONS.none;
+  const recData  = RECOMMENDATIONS[sev.key] || RECOMMENDATIONS.none;
+  const recs     = recData.items || [];
+  const timeframe = recData.timeframe || '';
   const [showForm, setShowForm] = uS(false);
   const [kind, setKind]         = uS(IV_KINDS[0]);
   const [customKind, setCustomKind] = uS('');
@@ -1215,7 +1224,9 @@ function CareAndLogTab({ sev, lang, interv, onSaveIntervention, carePlan, onUpda
     setKind(IV_KINDS[0]); setCustomKind(''); setNote(''); setShowForm(false);
   };
 
-  const doneCount = recs.filter((_, i) => cpChecked(carePlan[i])).length;
+  const doneCount   = recs.filter((_, i) => cpChecked(carePlan[i])).length;
+  const safetyIdx   = recs.findIndex(r => r.safety);
+  const safetyDone  = safetyIdx < 0 || cpChecked(carePlan[safetyIdx]);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 24, alignItems: 'flex-start' }}>
@@ -1294,30 +1305,68 @@ function CareAndLogTab({ sev, lang, interv, onSaveIntervention, carePlan, onUpda
 
       {/* Right: Care plan checklist */}
       <div>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 2 }}>แผนการดูแล</div>
-          <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
+        {/* Safety warning — extreme only */}
+        {sev.key === 'extreme' && !safetyDone && (
+          <div style={{ marginBottom: 12, padding: '10px 14px', background: 'rgba(179,80,62,.08)', border: '1px solid rgba(179,80,62,.3)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--rose)' }}>ยังไม่ได้ประเมิน safety — กรุณาดำเนินการก่อน</span>
+          </div>
+        )}
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>แผนการดูแล</div>
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99,
+              background: (sev.key === 'extreme' || sev.key === 'high') ? 'rgba(179,80,62,.1)' : 'var(--paper-3)',
+              color: (sev.key === 'extreme' || sev.key === 'high') ? 'var(--rose)' : 'var(--ink-3)',
+            }}>{timeframe}</span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>
             ระดับ <span style={{ color: sev.color, fontWeight: 700 }}>{sev.th}</span> — {doneCount}/{recs.length} เสร็จสิ้น
           </div>
         </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {recs.map((r, i) => {
+          {recs.map((item, i) => {
             const checked = cpChecked(carePlan[i]);
-            const meta = cpMeta(carePlan[i]);
+            const meta    = cpMeta(carePlan[i]);
+            const owner   = OWNER_META[item.owner] || OWNER_META.nurse;
+            const isUrgent = item.urgent && !checked;
             return (
-              <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, background: checked ? 'var(--sage-soft)' : 'var(--paper)', borderRadius: 10, cursor: 'pointer', border: '1px solid ' + (checked ? 'var(--sage-soft)' : 'var(--line-soft)'), transition: 'background .15s' }}>
-                <input type="checkbox" checked={checked} onChange={() => onUpdateCarePlan && onUpdateCarePlan(i, !checked)}
-                  style={{ marginTop: 2, accentColor: 'var(--terracotta)', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 13, color: 'var(--ink-2)', textDecoration: checked ? 'line-through' : 'none', opacity: checked ? 0.5 : 1 }}>{r}</span>
-                  {checked && meta && (
-                    <div style={{ fontSize: 10, color: 'var(--ink-4)', marginTop: 3 }}>{meta}</div>
+              <div key={i} style={{
+                padding: 12, borderRadius: 10, cursor: 'pointer',
+                background: checked ? 'var(--sage-soft)' : isUrgent ? 'rgba(196,90,62,.04)' : 'var(--paper)',
+                border: '1px solid ' + (checked ? 'var(--sage-soft)' : isUrgent ? 'rgba(196,90,62,.25)' : 'var(--line-soft)'),
+                transition: 'background .15s',
+              }}
+              onClick={() => onUpdateCarePlan && onUpdateCarePlan(i, !checked)}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <input type="checkbox" checked={checked} readOnly
+                    style={{ marginTop: 3, accentColor: 'var(--terracotta)', flexShrink: 0, pointerEvents: 'none' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                      {isUrgent && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--rose)', background: 'rgba(179,80,62,.12)', padding: '2px 6px', borderRadius: 99 }}>ด่วน</span>}
+                      {item.safety && <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--rose)', background: 'rgba(179,80,62,.12)', padding: '2px 6px', borderRadius: 99 }}>SAFETY</span>}
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99, color: owner.color, background: owner.bg }}>{owner.label}</span>
+                    </div>
+                    <span style={{ fontSize: 13, color: 'var(--ink-2)', textDecoration: checked ? 'line-through' : 'none', opacity: checked ? 0.55 : 1, lineHeight: 1.5 }}>{item.text}</span>
+                    {checked && meta && <div style={{ fontSize: 10, color: 'var(--ink-4)', marginTop: 3 }}>{meta}</div>}
+                  </div>
+                  {/* Quick-action: pre-fill intervention form */}
+                  {item.ivKind && !checked && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setKind(item.ivKind); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 99, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--terracotta)', whiteSpace: 'nowrap', touchAction: 'manipulation' }}>
+                      + บันทึก
+                    </button>
                   )}
                 </div>
-              </label>
+              </div>
             );
           })}
         </div>
+
         {doneCount > 0 && doneCount === recs.length && (
           <div style={{ marginTop: 14, padding: '10px 14px', background: 'var(--sage-soft)', borderRadius: 10, fontSize: 13, color: 'var(--sage)', fontWeight: 600, textAlign: 'center' }}>
             ✓ ดำเนินการครบทุกข้อแล้ว
@@ -1519,7 +1568,7 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
 
           <div style={{ padding: 16, background: 'var(--peach-soft)', borderRadius: 10, fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
             <strong style={{ color: 'var(--terracotta)' }}>การดำเนินการที่แนะนำ:</strong>{' '}
-            {RECOMMENDATIONS[sev.key][0]}
+            {RECOMMENDATIONS[sev.key].items[0].text}
           </div>
         </div>
       }
@@ -1569,7 +1618,7 @@ function ResultScreen({ result, fam, lang, thresholds, onDone, onView }) {
           <div>
             <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>{t('severity', lang)}</div>
             <SeverityBadge severity={sev} lang={lang} />
-            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 12, lineHeight: 1.5 }}>{RECOMMENDATIONS[sev.key][0]}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 12, lineHeight: 1.5 }}>{RECOMMENDATIONS[sev.key].items[0].text}</div>
           </div>
         </div>
 
@@ -1618,7 +1667,7 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
   const isMobile = useIsMobile();
   const e = item;
   const sev = e.sev;
-  const recs = RECOMMENDATIONS[sev.key] || [];
+  const recs = (RECOMMENDATIONS[sev.key] || RECOMMENDATIONS.none).items || [];
   const topSub = e.last && Object.entries(e.last.subTotals).
   map(([k, v]) => ({ k, pct: v / SUBSCALE_META[k].max })).
   sort((a, b) => b.pct - a.pct)[0];
@@ -1690,7 +1739,7 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
         <div>
           <div style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: 8 }}>การดำเนินการที่แนะนำ</div>
           <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5 }}>
-            {recs[0]}
+            {recs[0]?.text}
           </div>
         </div>
       </div>

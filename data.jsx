@@ -225,33 +225,52 @@ const ASSESSMENTS = [
 ];
 
 // Activity recommendations by severity (paraphrased from F-WI-RAISO-QS-201/01)
+// RECOMMENDATIONS — intervention protocol per severity level
+// item fields: text, owner ('nurse'|'doctor'|'sw'|'psych'), urgent (bool), ivKind (string|null), safety (bool)
 const RECOMMENDATIONS = {
-  none: [
-    'ดูแลต่อเนื่องโดยยึดครอบครัวเป็นศูนย์กลาง สนับสนุนการเยี่ยมและสร้างความผูกพันตามปกติ',
-  ],
-  mild: [
-    'แนะนำสภาพแวดล้อมหอผู้ป่วย อุปกรณ์ และเครื่องมือต่างๆ ให้ผู้ปกครองรับทราบ',
-    'ส่งเสริมการเยี่ยมทุกวัน และ skin-to-skin เมื่ออาการทารกคงที่',
-  ],
-  mod: [
-    'นัดประชุมครอบครัวอย่างเป็นทางการเพื่ออัปเดตอาการทารก',
-    'มอบเอกสารข้อมูล NICU ภาษาไทยให้ผู้ปกครอง',
-    'แนะนำ kangaroo care หากเหมาะสมทางคลินิก',
-    'ประสานงานกลุ่มสนับสนุนผู้ปกครองที่ผ่านประสบการณ์คล้ายกัน',
-  ],
-  high: [
-    'ส่งต่อนักสังคมสงเคราะห์ NICU ภายใน 24 ชั่วโมง',
-    'นัด check-in รายวันโดยพยาบาลหลักที่ดูแล',
-    'เสนอแบบคัดกรองสุขภาพจิต (EPDS / PHQ-9)',
-    'ประสานแพทย์เจ้าของไข้เพื่อนัดประชุมครอบครัวร่วม',
-  ],
-  extreme: [
-    'ส่งต่อด้านจิตสังคมทันที — นักสังคมสงเคราะห์ + นักจิตวิทยา',
-    'เปิดใช้เส้นทางสนับสนุนผู้ปกครองในภาวะวิกฤต',
-    'พิจารณาผู้สนับสนุนที่มีพื้นเพวัฒนธรรมใกล้เคียง',
-    'บันทึก safety plan และแจ้งทีมดูแลทราบ',
-    'จัดกิจกรรม grounding / ผ่อนคลายนำโดยพยาบาล ทุกวัน',
-  ],
+  none: {
+    timeframe: 'ประเมินซ้ำ 7 วัน',
+    items: [
+      { text: 'สนับสนุนการเยี่ยมทุกวันและสร้างความผูกพันระหว่างผู้ปกครองกับทารก', owner: 'nurse', urgent: false, ivKind: null },
+      { text: 'ส่งเสริม skin-to-skin เมื่ออาการทารกคงที่', owner: 'nurse', urgent: false, ivKind: 'Skin-to-skin' },
+    ],
+  },
+  mild: {
+    timeframe: 'ประเมินซ้ำ 5 วัน',
+    items: [
+      { text: 'แนะนำสภาพแวดล้อม อุปกรณ์ และ monitor ต่างๆ ใน NICU', owner: 'nurse', urgent: false, ivKind: 'ให้ความรู้' },
+      { text: 'มอบเอกสารข้อมูล NICU ภาษาไทยให้ผู้ปกครอง', owner: 'nurse', urgent: false, ivKind: 'ให้ความรู้' },
+      { text: 'ส่งเสริมการเยี่ยมสม่ำเสมอและ skin-to-skin', owner: 'nurse', urgent: false, ivKind: 'Skin-to-skin' },
+    ],
+  },
+  mod: {
+    timeframe: 'ประเมินซ้ำ 3 วัน',
+    items: [
+      { text: 'นัดประชุมครอบครัวอย่างเป็นทางการ อัปเดตอาการและแผนการรักษา', owner: 'doctor', urgent: false, ivKind: 'ประชุมครอบครัว' },
+      { text: 'แนะนำ kangaroo care หากเหมาะสมทางคลินิก', owner: 'nurse', urgent: false, ivKind: 'Skin-to-skin' },
+      { text: 'ประสานกลุ่ม peer support ผู้ปกครองที่ผ่านประสบการณ์คล้ายกัน', owner: 'sw', urgent: false, ivKind: 'งานสังคมสงเคราะห์' },
+      { text: 'ให้ความรู้บทบาทผู้ปกครองใน NICU และพัฒนาการทารก', owner: 'nurse', urgent: false, ivKind: 'ให้ความรู้' },
+    ],
+  },
+  high: {
+    timeframe: 'ดำเนินการภายใน 24 ชั่วโมง',
+    items: [
+      { text: 'ส่งต่อนักสังคมสงเคราะห์ NICU', owner: 'sw', urgent: true, ivKind: 'งานสังคมสงเคราะห์' },
+      { text: 'นัด check-in รายวันโดยพยาบาลหลักที่ดูแล', owner: 'nurse', urgent: true, ivKind: null },
+      { text: 'เสนอแบบคัดกรองสุขภาพจิต (EPDS / PHQ-9)', owner: 'doctor', urgent: true, ivKind: 'สนับสนุนจิตใจ' },
+      { text: 'ประสานแพทย์เจ้าของไข้ นัดประชุมครอบครัวร่วม', owner: 'doctor', urgent: false, ivKind: 'ประชุมครอบครัว' },
+    ],
+  },
+  extreme: {
+    timeframe: 'ดำเนินการวันนี้ทันที',
+    items: [
+      { text: 'ประเมิน safety — ไม่มีความคิดทำร้ายตนเองหรือผู้อื่น', owner: 'doctor', urgent: true, ivKind: null, safety: true },
+      { text: 'ส่งต่อนักสังคมสงเคราะห์ + นักจิตวิทยา ทันที', owner: 'sw', urgent: true, ivKind: 'งานสังคมสงเคราะห์' },
+      { text: 'แจ้งแพทย์เพื่อพิจารณา psychiatry consult', owner: 'doctor', urgent: true, ivKind: 'สนับสนุนจิตใจ' },
+      { text: 'บันทึก safety plan และแจ้งทีมดูแลรับทราบ', owner: 'nurse', urgent: true, ivKind: null },
+      { text: 'จัดกิจกรรม grounding / ผ่อนคลาย นำโดยพยาบาล ทุกวัน', owner: 'nurse', urgent: false, ivKind: 'สนับสนุนจิตใจ' },
+    ],
+  },
 };
 
 // Users

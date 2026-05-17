@@ -371,7 +371,7 @@ function GlobalSearch({ families, assessments, thresholds, onOpen, onClose }) {
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>เตียง {fam.bed}</div>
                   <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
                     HN {fam.infantId} · {fam.relation}
-                    {days != null && <span style={{ marginLeft: 6, fontFamily: 'var(--mono)', color: 'var(--ink-4)', fontSize: 11 }}>D{days}</span>}
+                    {days != null && <span style={{ marginLeft: 6, fontFamily: 'var(--mono)', color: 'var(--ink-4)', fontSize: 11 }}>D {days}</span>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -517,7 +517,7 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 700 }}>เตียง {e.fam.bed}</span>
-                      {(() => { const d = daysIn(e.fam.admitDate, e.fam.dayAdmit); return d ? <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: 'var(--mono)', background: 'var(--paper-3)', padding: '1px 6px', borderRadius: 99 }}>D{d}</span> : null; })()}
+                      {(() => { const d = daysIn(e.fam.admitDate, e.fam.dayAdmit); return d ? <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: 'var(--mono)', background: 'var(--paper-3)', padding: '1px 6px', borderRadius: 99 }}>D {d}</span> : null; })()}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{e.fam.relation} · {e.fam.dx}</div>
                     {e.lastInterv && (
@@ -860,7 +860,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
               <h1 className="serif" style={{ fontSize: isMobile ? 24 : 32 }}>เตียง {fam.bed}</h1>
-              {(() => { const d = daysIn(fam.admitDate, fam.dayAdmit); return d ? <span style={{ fontSize: 14, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>D{d}</span> : null; })()}
+              {(() => { const d = daysIn(fam.admitDate, fam.dayAdmit); return d ? <span style={{ fontSize: 14, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>D {d}</span> : null; })()}
             </div>
             <div style={{ fontSize: 14, color: 'var(--ink-3)', marginBottom: 4 }}>
               {fam.relation} · GA {fam.ga} wk · BW {fam.bw} g
@@ -1040,7 +1040,7 @@ function FamilyHistoryTab({ fa, interv, thresholds, lang, fam }) {
               {/* Date column */}
               <div style={{ textAlign: 'right', paddingTop: 14, paddingRight: 4 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', lineHeight: 1.3 }}>{fmtDate(a.date)}</div>
-                {d && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', marginTop: 2 }}>D{d}</div>}
+                {d && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', marginTop: 2 }}>D {d}</div>}
               </div>
 
               {/* Timeline spine */}
@@ -1053,9 +1053,6 @@ function FamilyHistoryTab({ fa, interv, thresholds, lang, fam }) {
               <div style={{ padding: '12px 16px 16px', marginBottom: isLast ? 0 : 8, marginLeft: 4, background: 'var(--card)', border: '1px solid var(--line-soft)', borderLeft: `3px solid ${sev.color}`, borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ink-4)' }}>การประเมิน PSS</div>
-                  <button onClick={() => exportAssessmentPDF(fam, a, thresholds)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', fontSize: 10, fontWeight: 600, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--paper-2)', color: 'var(--ink-3)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    <Icon name="download" size={11} /> PDF
-                  </button>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                   <span className="serif" style={{ fontSize: 28, color: sev.color, lineHeight: 1 }}>{a.total}</span>
@@ -1092,7 +1089,7 @@ function FamilyHistoryTab({ fa, interv, thresholds, lang, fam }) {
             {/* Date column */}
             <div style={{ textAlign: 'right', paddingTop: 10, paddingRight: 4 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', lineHeight: 1.3 }}>{fmtDate(iv.date)}</div>
-              {d && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', marginTop: 2 }}>D{d}</div>}
+              {d && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', marginTop: 2 }}>D {d}</div>}
             </div>
 
             {/* Timeline spine */}
@@ -1549,107 +1546,6 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
 
 }
 
-// ===== PDF EXPORT =================================================
-function exportAssessmentPDF(fam, ass, thresholds) {
-  if (!window.html2pdf) {
-    alert('กำลังโหลด html2pdf กรุณาลองอีกครั้ง');
-    return;
-  }
-  const sev = severity(ass.total, thresholds);
-  const sevLabels = { none: 'ไม่เครียด', mild: 'เครียดเล็กน้อย', mod: 'เครียดปานกลาง', high: 'เครียดมาก', extreme: 'เครียดมากที่สุด' };
-  const sevColors = { none: '#6e8a6a', mild: '#c89a3e', mod: '#d68a5e', high: '#b3503e', extreme: '#6f3b58' };
-  const sevBgs   = { none: '#e1ead5', mild: '#f7ecd1', mod: '#fae4d4', high: '#f5d6ce', extreme: '#eddae5' };
-  const col = sevColors[sev.key] || '#c45a3e';
-  const bg  = sevBgs[sev.key]   || '#fbe8d8';
-
-  const days = fam?.admitDate
-    ? Math.max(1, Math.floor((Date.now() - new Date(fam.admitDate)) / 86400000) + 1)
-    : (Number(fam?.dayAdmit) || null);
-  const dateStr = ass.date
-    ? new Date(ass.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
-    : new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-  const today = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-
-  const sub = ass.subTotals || { ss: ass.ssScore || 0, ia: ass.iaScore || 0, pr: ass.prScore || 0, sc: ass.scScore || 0 };
-  const subRows = [
-    { label: 'สภาพแวดล้อม',         code: 'SS', max: 24, v: sub.ss, color: '#6b8aaa' },
-    { label: 'รูปลักษณ์ทารก',        code: 'IA', max: 36, v: sub.ia, color: '#c89a3e' },
-    { label: 'บทบาทพ่อแม่',           code: 'PR', max: 24, v: sub.pr, color: '#a05a8a' },
-    { label: 'การสื่อสารเจ้าหน้าที่', code: 'SC', max: 20, v: sub.sc, color: '#6e8a6a' },
-  ];
-
-  const html = `<div style="font-family:Sarabun,Arial,sans-serif;max-width:560px;padding:24px;color:#2a221a;font-size:13px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #c45a3e;padding-bottom:12px;margin-bottom:18px;">
-      <div>
-        <div style="font-size:20px;font-weight:700;color:#c45a3e;letter-spacing:0.04em;">PSS : NICU</div>
-        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#8a7868;margin-top:2px;">แบบประเมินความเครียดผู้ปกครอง</div>
-      </div>
-      <div style="text-align:right;font-size:11px;color:#8a7868;line-height:1.6;">
-        <div style="font-weight:600;">${fam?.hospitalCode || 'KCMH'}</div>
-        <div>พิมพ์: ${today}</div>
-      </div>
-    </div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;"><tr style="vertical-align:top;">
-      <td style="width:55%;padding-right:16px;">
-        <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#8a7868;margin-bottom:4px;">ข้อมูลผู้ป่วย</div>
-        <div style="font-size:22px;font-weight:700;line-height:1.1;">เตียง ${fam?.bed || '-'}</div>
-        <div style="font-size:13px;color:#5b4d3f;margin-top:3px;">HN: ${fam?.infantId || '-'}</div>
-        <div style="font-size:12px;color:#5b4d3f;margin-top:2px;">${fam?.relation || ''} · GA ${fam?.ga || '-'}wk · BW ${fam?.bw || '-'}g</div>
-        ${fam?.dx ? `<div style="font-size:12px;color:#5b4d3f;margin-top:2px;">${fam.dx}</div>` : ''}
-      </td>
-      <td>
-        <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#8a7868;margin-bottom:4px;">การประเมิน</div>
-        <div style="font-size:13px;color:#5b4d3f;line-height:1.8;">${dateStr}</div>
-        ${days ? `<div style="font-size:12px;color:#5b4d3f;">วันที่ ${days} ของการรับไว้</div>` : ''}
-        ${ass.by ? `<div style="font-size:12px;color:#5b4d3f;">ผู้ประเมิน: ${fmtBy(ass.by)}</div>` : ''}
-      </td>
-    </tr></table>
-    <div style="background:${bg};border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:24px;align-items:center;">
-      <div>
-        <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#8a7868;margin-bottom:2px;">คะแนนรวม</div>
-        <div style="font-size:44px;font-weight:700;line-height:1;color:${col};">${ass.total}<span style="font-size:14px;color:#b6a791;">/104</span></div>
-      </div>
-      <div>
-        <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#8a7868;margin-bottom:4px;">ระดับความเครียด</div>
-        <div style="display:inline-block;padding:5px 13px;border-radius:999px;background:${col}22;color:${col};font-weight:700;font-size:14px;">${sevLabels[sev.key]}</div>
-      </div>
-    </div>
-    <div style="margin-bottom:16px;">
-      <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#8a7868;margin-bottom:8px;">คะแนนย่อย</div>
-      <table style="width:100%;border-collapse:collapse;">
-        ${subRows.map(s => `<tr>
-          <td style="padding:5px 10px 5px 0;font-size:13px;color:#5b4d3f;white-space:nowrap;">${s.label} <span style="font-weight:700;color:${s.color};">(${s.code})</span></td>
-          <td style="padding:5px 0;width:50%;"><div style="background:#efe5d4;border-radius:99px;height:7px;overflow:hidden;"><div style="height:100%;width:${Math.round(s.v/s.max*100)}%;background:${s.color};border-radius:99px;"></div></div></td>
-          <td style="padding:5px 0 5px 10px;font-size:12px;font-weight:700;color:${s.color};white-space:nowrap;">${s.v}/${s.max}</td>
-        </tr>`).join('')}
-      </table>
-    </div>
-    ${ass.notes ? `<div style="margin-bottom:16px;"><div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#8a7868;margin-bottom:6px;">หมายเหตุ</div><div style="padding:10px 14px;background:#f5ede1;border-radius:8px;font-size:13px;color:#5b4d3f;font-style:italic;border-left:2px solid #e8dccb;">${ass.notes}</div></div>` : ''}
-    <div style="border-top:1px solid #e8dccb;padding-top:10px;margin-top:12px;display:flex;justify-content:space-between;font-size:10px;color:#b6a791;">
-      <span>PSS:NICU v5.0 · ${fam?.hospitalCode || 'KCMH'}</span>
-      <span>พิมพ์: ${today}</span>
-    </div>
-  </div>`;
-
-  const el = document.createElement('div');
-  el.innerHTML = html;
-  el.style.cssText = 'position:absolute;left:-9999px;top:0;width:600px;';
-  document.body.appendChild(el);
-
-  const bedStr = String(fam?.bed || '').replace(/[\s/]+/g, '-');
-  html2pdf().set({
-    margin: [10, 10, 10, 10],
-    filename: `PSS-เตียง${bedStr}-${ass.date || new Date().toISOString().slice(0, 10)}.pdf`,
-    html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  }).from(el).save().then(() => {
-    document.body.removeChild(el);
-    window.showToast?.('ดาวน์โหลด PDF สำเร็จ ✓', 'success');
-  }).catch(() => {
-    if (document.body.contains(el)) document.body.removeChild(el);
-    window.showToast?.('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
-  });
-}
 
 // ===== RESULT / SUMMARY ===========================================
 function ResultScreen({ result, fam, lang, thresholds, onDone, onView }) {
@@ -1679,15 +1575,6 @@ function ResultScreen({ result, fam, lang, thresholds, onDone, onView }) {
 
         <div style={{ display: 'flex', gap: 10, marginTop: 28, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="btn btn-ghost" onClick={onDone}>กลับสู่รายชื่อ</button>
-          <button className="btn btn-ghost" onClick={() => exportAssessmentPDF(fam, {
-            total: result.total,
-            date: new Date().toISOString().slice(0, 10),
-            subTotals: result.totals,
-            notes: result.notes || '',
-            by: '',
-          }, thresholds)}>
-            <Icon name="download" size={14} /> ดาวน์โหลด PDF
-          </button>
           <button className="btn btn-primary" onClick={onView}>ดูแผนการดูแล <Icon name="arrow-right" size={14} /></button>
         </div>
       </div>

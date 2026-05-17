@@ -120,7 +120,11 @@ function useIsMobile(bp = 640) {
   useEffect(() => {
     const h = () => setM(window.innerWidth <= bp);
     window.addEventListener('resize', h, { passive: true });
-    return () => window.removeEventListener('resize', h);
+    window.addEventListener('orientationchange', h, { passive: true });
+    return () => {
+      window.removeEventListener('resize', h);
+      window.removeEventListener('orientationchange', h);
+    };
   }, [bp]);
   return m;
 }
@@ -554,6 +558,9 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
     const avSz = 40;
     return (
       <button onClick={onOpen}
+        onTouchStart={e => { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.transform = 'scale(0.99)'; }}
+        onTouchEnd={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none'; }}
+        onTouchCancel={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none'; }}
         style={{
           width: '100%', textAlign: 'left',
           display: 'flex', alignItems: 'center', gap: 12,
@@ -563,7 +570,7 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
           borderLeft: `3px solid ${sev.color}`,
           borderRadius: 'var(--r3)',
           boxShadow: 'var(--sh1)',
-          transition: 'box-shadow .12s ease',
+          transition: 'opacity .08s ease, transform .08s ease',
         }}>
         <Avatar initials={lbl} size={avSz} _fontSize={lbl.length > 3 ? avSz * 0.26 : avSz * 0.38}
           palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : sev.key === 'mod' ? 'terracotta' : 'sage'} />

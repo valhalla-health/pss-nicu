@@ -50,7 +50,7 @@ function LoginScreen({ onLogin, lang }) {
             sessionStorage.setItem('pss_token', resp.credential);
             onLogin({ ...data, token: resp.credential });
           } catch (err) {
-            setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+            setError('ไม่พบบัญชีนี้ในระบบ หรือเกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
             setLoading(false);
             setClicked(false);
           }
@@ -338,13 +338,13 @@ function GlobalSearch({ families, assessments, thresholds, onOpen, onClose }) {
             }}
           />
           {q
-            ? <button onClick={() => setQ('')} style={{ color: 'var(--ink-4)', fontSize: 13, padding: '2px 6px' }}>✕</button>
+            ? <button onClick={() => setQ('')} style={{ color: 'var(--ink-4)', fontSize: 13, padding: '2px 6px', minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation' }}>✕</button>
             : <kbd style={{ fontSize: 10, padding: '2px 7px', background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 5, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>Esc</kbd>
           }
         </div>
 
         {/* Results list */}
-        <div style={{ maxHeight: isMobile ? 280 : 360, overflowY: 'auto' }}>
+        <div style={{ maxHeight: isMobile ? 'min(280px, 45dvh)' : 360, overflowY: 'auto' }}>
           {!q && <div style={{ padding: '8px 20px 4px', fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>ครอบครัวทั้งหมด ({families.length} ราย)</div>}
           {q && results.length === 0 && (
             <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
@@ -755,7 +755,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
           <div style={{
             flex: 1, display: 'flex', alignItems: 'stretch',
             background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: 3,
-            overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+            overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none',
           }}>
             {filters.map((f) =>
             <button key={f.k} onClick={() => setFilter(f.k)}
@@ -927,7 +927,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {[
         { k: 'overview', label: t('overview', lang) },
         { k: 'history',  label: 'ประวัติการประเมิน' },
@@ -936,6 +936,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
         <button key={tb.k} onClick={() => setTab(tb.k)}
         style={{
           padding: '12px 18px', fontSize: 13, fontWeight: 600,
+          flexShrink: 0, whiteSpace: 'nowrap',
           color: tab === tb.k ? 'var(--terracotta)' : 'var(--ink-3)',
           borderBottom: '2px solid ' + (tab === tb.k ? 'var(--terracotta)' : 'transparent'),
           marginBottom: -1
@@ -1450,7 +1451,7 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
           </p>
 
           {/* Scale legend */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 20, fontSize: isMobile ? 10 : 11, color: 'var(--ink-3)', textAlign: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 20, fontSize: 11, color: 'var(--ink-3)', textAlign: 'center' }}>
             {STRESS_LEVELS.map((l) =>
           <div key={l.v} style={{ padding: isMobile ? '8px 2px' : '6px 4px', background: 'var(--paper-2)', borderRadius: 8 }}>
                 <div className="mono" style={{ fontSize: isMobile ? 15 : 14, color: 'var(--ink-2)', fontWeight: 700 }}>{l.v}</div>
@@ -1539,7 +1540,7 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
         onClick={() => { setStep(step + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
             {t('next', lang)} <Icon name="arrow-right" size={14} />
           </button> :
-        <button className="btn btn-primary" onClick={() => { localStorage.removeItem(DRAFT_KEY(famId)); onSubmit({ totals, total, notes, sev, answers, famId }); }}>
+        <button className="btn btn-primary" onClick={() => { onSubmit({ totals, total, notes, sev, answers, famId }); localStorage.removeItem(DRAFT_KEY(famId)); }}>
             <Icon name="check" size={14} /> {t('submit', lang)}
           </button>
         }
@@ -1866,7 +1867,7 @@ function AdminScreen({ families, assessments, lang, thresholds, user }) {
     <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
       <SectionHeading eyebrow="การตั้งค่า" title="ผู้ดูแลระบบ" />
 
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {[
         { k: 'users',      label: 'ผู้ใช้งาน' },
         { k: 'thresholds', label: 'ค่าเกณฑ์' },
@@ -1884,7 +1885,7 @@ function AdminScreen({ families, assessments, lang, thresholds, user }) {
 
       {tab === 'users' &&
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 480 }}>
             <thead>
               <tr style={{ background: 'var(--paper)', borderBottom: '1px solid var(--line)' }}>

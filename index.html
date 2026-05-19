@@ -108,7 +108,7 @@
     }
     body { min-height: 100vh; overscroll-behavior-y: none; }
 
-    /* App scale wrapper — tablet-first 1366×1024 */
+    /* App scale wrapper — mobile-first (iPhone/iPad/Android primary) */
     #root { min-height: 100vh; }
 
     /* Type helpers */
@@ -245,6 +245,42 @@
     @media (max-width: 1024px) {
       /* Hide nav text labels — handled by isCompact in TopNav JS too */
       .nav-label { display: none !important; }
+    }
+
+    /* ===== Bottom Tab Bar (mobile-native navigation) ============== */
+    .pss-bottom-tab {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      display: flex;
+      background: rgba(251,246,239,0.97);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .pss-bottom-tab-btn {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 8px 4px; min-height: 56px;
+      touch-action: manipulation;
+      border-top: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+      color: var(--ink-4); font-size: 10px; font-weight: 500;
+      gap: 3px;
+    }
+    .pss-bottom-tab-btn.tab-active {
+      color: var(--terracotta);
+      border-top-color: var(--terracotta);
+      font-weight: 700;
+    }
+    /* Slim header for mobile */
+    .pss-slim-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: max(10px, env(safe-area-inset-top, 10px)) 16px 10px;
+      background: rgba(251,246,239,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 50;
     }
 
     /* ===== Mobile ≤640px ========================================== */

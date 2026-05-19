@@ -8,6 +8,7 @@ const API_URL          = window.PSS_API_URL || '';
 const OFFLINE_QUEUE_KEY = 'pss_pending_assessments';
 
 function App() {
+  const isCompact = useIsMobile(1024);
   const [user, setUser]           = aS(null);
   const [route, setRoute]         = aS('dashboard');
   const [openFamId, setOpenFamId] = aS(null);
@@ -332,23 +333,29 @@ function App() {
   };
   const newAss = (id) => { setOpenFamId(id); setRoute('assessment'); };
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('pss_token');
+    setFamilies([]); setAssessments([]);
+    setUser(null);
+  };
+
   return (
-    <div data-screen-label={`pss-nicu - ${route}`}>
+    <div data-screen-label={`pss-nicu - ${route}`}
+      style={{ paddingBottom: isCompact ? 'calc(56px + env(safe-area-inset-bottom, 0px))' : 0 }}>
       {loadError && (
         <div style={{ padding: '10px 20px', background: 'rgba(179,80,62,.1)', borderBottom: '1px solid rgba(179,80,62,.2)', color: 'var(--rose)', fontSize: 13, display: 'flex', gap: 8 }}>
           ⚠ {loadError}
           <button onClick={() => setUser({...user})} style={{ marginLeft: 8, color: 'var(--terracotta)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>ลองใหม่</button>
         </div>
       )}
-      <TopNav user={user} route={route === 'familyDetail' || route === 'assessment' || route === 'result' ? 'families' : route}
-        onRoute={goRoute} lang={lang} alertCount={alertCount}
-        onLangToggle={null}
-        onSearch={() => setShowSearch(true)}
-        onLogout={() => {
-          sessionStorage.removeItem('pss_token');
-          setFamilies([]); setAssessments([]);
-          setUser(null);
-        }} />
+      {isCompact
+        ? <SlimHeader alertCount={alertCount} onSearch={() => setShowSearch(true)} user={user} onLogout={handleLogout} />
+        : <TopNav user={user} route={route === 'familyDetail' || route === 'assessment' || route === 'result' ? 'families' : route}
+            onRoute={goRoute} lang={lang} alertCount={alertCount}
+            onLangToggle={null}
+            onSearch={() => setShowSearch(true)}
+            onLogout={handleLogout} />
+      }
 
       <main className="fade-in" key={route + (openFamId || '')}>
         {route === 'dashboard' && (
@@ -412,6 +419,16 @@ function App() {
         />
       )}
 
+      {/* Bottom Tab Bar — mobile-native nav (≤1024px) */}
+      {isCompact && (
+        <BottomTabBar
+          route={route}
+          onRoute={goRoute}
+          alertCount={alertCount}
+          userRole={user.role}
+        />
+      )}
+
       {/* FAB — บันทึกด่วน: ปรากฏบน familyDetail เท่านั้น */}
       {route === 'familyDetail' && openFamId && (
         <button
@@ -419,7 +436,9 @@ function App() {
           title="บันทึกด่วน"
           style={{
             position: 'fixed',
-            bottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
+            bottom: isCompact
+              ? 'calc(68px + env(safe-area-inset-bottom, 0px))'
+              : 'calc(28px + env(safe-area-inset-bottom, 0px))',
             right: 'max(28px, env(safe-area-inset-right, 28px))',
             zIndex: 900,
             width: 52, height: 52, borderRadius: '50%',

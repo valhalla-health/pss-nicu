@@ -249,7 +249,7 @@ function LoginScreen({ onLogin, lang }) {
         color: 'var(--ink-4)',
         fontWeight: 500,
       }}>
-        <span>พัฒนาที่ KCMH</span>
+        <span>Valhalla Team</span>
         <span style={{ opacity: 0.4 }}>·</span>
         <span style={{ fontFamily: 'var(--mono)', letterSpacing: '0.08em', textTransform: 'none' }}>v5.0</span>
       </div>
@@ -428,7 +428,7 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
   const priorityList = [...enriched].filter((e) => e.last).sort((a, b) => b.last.total - a.last.total).slice(0, 5);
 
   return (
-    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 130px' : '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Welcome */}
       <div style={{
         display: 'flex',
@@ -452,16 +452,31 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
         </button>
       </div>
 
-      {/* Stat strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
-        <StatCard label="ครอบครัวทั้งหมด" value={families.length} suffix="ราย" accent="var(--ink-2)" />
-        <StatCard label="ความเสี่ยงสูง" value={highRisk.length} suffix={'/ ' + families.length} accent="var(--sev-high)"
-        hint={highRisk.length > 0 ? 'ควรติดตามด่วนวันนี้' : 'อยู่ในเกณฑ์ปกติ'} />
-        <StatCard label="แนวโน้มเพิ่มขึ้น" value={rising.length} suffix="ราย" accent="var(--sev-mod)"
-        hint="คะแนนสูงขึ้นจากครั้งก่อน" />
-        <StatCard label="คะแนนเฉลี่ย PSS" value={avgScore} suffix="/ 104" accent="var(--terracotta)"
-        hint={`จาก ${enriched.filter((e) => e.last).length} ราย`} />
-      </div>
+      {/* Stat strip — horizontal scroll on mobile, grid on desktop */}
+      {isMobile ? (
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', marginLeft: -16, marginRight: -16, paddingLeft: 16, paddingRight: 16, paddingBottom: 6, marginBottom: 20, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {[
+            { label: 'ครอบครัวทั้งหมด', value: families.length, suffix: 'ราย', accent: 'var(--ink-2)' },
+            { label: 'ความเสี่ยงสูง', value: highRisk.length, suffix: '/ ' + families.length, accent: 'var(--sev-high)', hint: highRisk.length > 0 ? 'ติดตามด่วน' : 'ปกติ' },
+            { label: 'แนวโน้มเพิ่ม', value: rising.length, suffix: 'ราย', accent: 'var(--sev-mod)', hint: 'จากครั้งก่อน' },
+            { label: 'คะแนนเฉลี่ย', value: avgScore, suffix: '/104', accent: 'var(--terracotta)', hint: `${enriched.filter(e => e.last).length} ราย` },
+          ].map((c, i) => (
+            <div key={i} style={{ minWidth: 130, flexShrink: 0 }}>
+              <StatCard label={c.label} value={c.value} suffix={c.suffix} accent={c.accent} hint={c.hint} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
+          <StatCard label="ครอบครัวทั้งหมด" value={families.length} suffix="ราย" accent="var(--ink-2)" />
+          <StatCard label="ความเสี่ยงสูง" value={highRisk.length} suffix={'/ ' + families.length} accent="var(--sev-high)"
+            hint={highRisk.length > 0 ? 'ควรติดตามด่วนวันนี้' : 'อยู่ในเกณฑ์ปกติ'} />
+          <StatCard label="แนวโน้มเพิ่มขึ้น" value={rising.length} suffix="ราย" accent="var(--sev-mod)"
+            hint="คะแนนสูงขึ้นจากครั้งก่อน" />
+          <StatCard label="คะแนนเฉลี่ย PSS" value={avgScore} suffix="/ 104" accent="var(--terracotta)"
+            hint={`จาก ${enriched.filter((e) => e.last).length} ราย`} />
+        </div>
+      )}
 
       {/* Severity legend */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -716,7 +731,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
   { k: 'new',    label: 'รายใหม่ (≤3 วัน)',  count: enriched.filter((e) => e.fam.dayAdmit <= 3).length }];
 
   return (
-    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 130px' : '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
       <SectionHeading
         eyebrow={`${families.length} ราย`}
         title={<span>ครอบครัว <em style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>ในความดูแล</em></span>}
@@ -839,7 +854,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
 
   if (!fam) return null;
   return (
-    <div style={{ padding: isMobile ? '16px 16px 80px' : '24px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px 16px 130px' : '24px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Breadcrumb */}
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-3)', marginBottom: 16, fontWeight: 600 }}>
         <Icon name="arrow-left" size={14} /> {t('back', lang)}
@@ -1645,7 +1660,7 @@ function AlertsScreen({ families, assessments, lang, thresholds, onOpenFamily })
   const alerts = enriched.filter((e) => e.last && (e.sev.key === 'high' || e.sev.key === 'extreme' || e.isRising));
 
   return (
-    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 130px' : '32px 28px 80px', maxWidth: 1100, margin: '0 auto' }}>
       <SectionHeading
         eyebrow={`${alerts.length} รายการ`}
         title={<span>การแจ้งเตือน <em style={{ fontStyle: 'italic', color: 'var(--rose)' }}>ที่ต้องดำเนินการ</em></span>} />
@@ -1800,7 +1815,7 @@ function AdminScreen({ families, assessments, lang, thresholds, user }) {
       .finally(() => setStaffLoading(false));
   }, [user]);
   return (
-    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 130px' : '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
       <SectionHeading eyebrow="การตั้งค่า" title="ผู้ดูแลระบบ" />
 
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -2013,7 +2028,7 @@ function AnalyticsScreen({ families, assessments, lang, thresholds }) {
     : null;
 
   return (
-    <div style={{ padding: isMobile ? '20px 16px 80px' : '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '20px 16px 130px' : '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
       <SectionHeading
         eyebrow={`${assessments.length} การประเมิน · ${families.length} ครอบครัว`}
         title={<span>วิเคราะห์ <em style={{ fontStyle: 'italic', color: 'var(--terracotta)' }}>ข้อมูล PSS:NICU</em></span>}

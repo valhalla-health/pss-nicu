@@ -538,9 +538,82 @@ function StatCard({ label, value, suffix, hint, accent = 'var(--terracotta)', ch
 
 }
 
+// --- Slim Header (mobile-native — replaces TopNav on ≤1024px) -----
+function SlimHeader({ alertCount, onSearch, user, onLogout, title = 'PSS:NICU' }) {
+  return (
+    <header className="pss-slim-header">
+      <Icon name="logo" size={26} />
+      <span className="serif" style={{ fontSize: 17, fontWeight: 600, flex: 1 }}>{title}</span>
+      {alertCount > 0 && (
+        <div style={{ position: 'relative', marginRight: 2 }}>
+          <Icon name="bell" size={22} color="var(--rose)" />
+          <span style={{
+            position: 'absolute', top: -5, right: -5,
+            background: 'var(--rose)', color: '#fff',
+            fontSize: 9, fontWeight: 800, borderRadius: 99,
+            padding: '1px 4px', minWidth: 15, textAlign: 'center', lineHeight: 1.4,
+          }}>{alertCount}</span>
+        </div>
+      )}
+      {onSearch && (
+        <button onClick={onSearch} style={{ padding: '8px', touchAction: 'manipulation', color: 'var(--ink-3)' }}>
+          <Icon name="search" size={20} />
+        </button>
+      )}
+      <Avatar initials={nameToInitials(user.name || user.email)} size={30}
+        palette={user.role === 'doctor' ? 'terracotta' : user.role === 'admin' ? 'plum' : 'sage'} />
+      {onLogout && (
+        <button onClick={onLogout} title="ออกจากระบบ" style={{ padding: '8px', touchAction: 'manipulation' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+          </svg>
+        </button>
+      )}
+    </header>
+  );
+}
+
+// --- Bottom Tab Bar (mobile-native nav — ≤1024px) -----------------
+function BottomTabBar({ route, onRoute, alertCount, userRole }) {
+  const activeRoute = ['familyDetail','assessment','result'].includes(route) ? 'families' : route;
+  const tabs = [
+    { k: 'dashboard', icon: 'home',  label: 'หน้าหลัก' },
+    { k: 'families',  icon: 'users', label: 'ครอบครัว' },
+    { k: 'alerts',    icon: 'bell',  label: 'แจ้งเตือน', badge: alertCount },
+    { k: 'analytics', icon: 'chart', label: 'วิเคราะห์' },
+    ...(userRole === 'admin' ? [{ k: 'admin', icon: 'cog', label: 'Admin' }] : []),
+  ];
+  return (
+    <nav className="pss-bottom-tab">
+      {tabs.map(tab => {
+        const active = activeRoute === tab.k;
+        return (
+          <button key={tab.k} onClick={() => onRoute(tab.k)}
+            className={`pss-bottom-tab-btn${active ? ' tab-active' : ''}`}>
+            <div style={{ position: 'relative' }}>
+              <Icon name={tab.icon} size={22} />
+              {tab.badge > 0 && (
+                <span style={{
+                  position: 'absolute', top: -5, right: -6,
+                  background: 'var(--rose)', color: '#fff',
+                  fontSize: 9, fontWeight: 800, borderRadius: 99,
+                  padding: '1px 4px', minWidth: 15, textAlign: 'center', lineHeight: 1.4,
+                }}>{tab.badge}</span>
+              )}
+            </div>
+            <span>{tab.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 // --- Family card (list row) ---------------------------------------
 function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
   const isMobile = useIsMobile();
+  const [swipeX, setSwipeX] = useState(0);
+  const touchStartX = useRef(0);
   const sev = severity(lastAss?.total, thresholds);
   const flag = lastAss && trend && trend.length >= 2 && trend[trend.length - 1] > trend[trend.length - 2];
   const pillM = sevPill(sev, lang);
@@ -556,43 +629,75 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
 
   if (isMobile) {
     const avSz = 40;
+    const clampedSwipe = Math.min(swipeX, 80);
+    const showAction = clampedSwipe > 50;
+
+    const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+    const handleTouchMove = (e) => {
+      const dx = e.touches[0].clientX - touchStartX.current;
+      if (dx > 0) setSwipeX(Math.min(dx, 85));
+    };
+    const handleTouchEnd = () => {
+      if (swipeX > 65) onOpen();
+      setSwipeX(0);
+    };
+    const handleTouchCancel = () => setSwipeX(0);
+
     return (
-      <button onClick={onOpen}
-        onTouchStart={e => { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.transform = 'scale(0.99)'; }}
-        onTouchEnd={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none'; }}
-        onTouchCancel={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none'; }}
-        style={{
-          width: '100%', textAlign: 'left',
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '12px 14px',
-          background: 'var(--card)',
-          border: '1px solid var(--line)',
-          borderLeft: `3px solid ${sev.color}`,
-          borderRadius: 'var(--r3)',
-          boxShadow: 'var(--sh1)',
-          transition: 'opacity .08s ease, transform .08s ease',
+      <div style={{ position: 'relative', borderRadius: 'var(--r3)', overflow: 'hidden' }}>
+        {/* Swipe action hint (revealed behind card) */}
+        <div style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0,
+          width: 80, background: 'var(--terracotta)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+          flexDirection: 'column',
+          opacity: clampedSwipe / 80,
+          transition: swipeX === 0 ? 'opacity .2s' : 'none',
         }}>
-        <Avatar initials={lbl} size={avSz} _fontSize={lbl.length > 3 ? avSz * 0.26 : avSz * 0.38}
-          palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : sev.key === 'mod' ? 'terracotta' : 'sage'} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>เตียง {fam.bed}</span>
-            {days && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', background: 'var(--paper-3)', padding: '1px 5px', borderRadius: 99 }}>D {days}</span>}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {fam.relation} · GA {fam.ga}wk · BW {fam.bw}g
-          </div>
+          <Icon name="plus" size={18} color="#fff" />
+          <span style={{ fontSize: 9, fontWeight: 800, color: '#fff', letterSpacing: '0.04em' }}>ประเมิน</span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <span className="serif" style={{ fontSize: 20, color: sev.color, lineHeight: 1 }}>{lastAss ? lastAss.total : '—'}</span>
-            <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: 'var(--mono)' }}>/104</span>
-            {flag && <Icon name="trend-up" size={12} color="var(--rose)" />}
+        {/* Card */}
+        <button onClick={onOpen}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
+          style={{
+            width: '100%', textAlign: 'left',
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px',
+            background: 'var(--card)',
+            border: '1px solid var(--line)',
+            borderLeft: `3px solid ${sev.color}`,
+            borderRadius: 'var(--r3)',
+            boxShadow: showAction ? 'var(--sh2)' : 'var(--sh1)',
+            transform: `translateX(${clampedSwipe}px)`,
+            transition: swipeX === 0 ? 'transform .2s ease, box-shadow .15s' : 'none',
+            position: 'relative', zIndex: 1,
+          }}>
+          <Avatar initials={lbl} size={avSz} _fontSize={lbl.length > 3 ? avSz * 0.26 : avSz * 0.38}
+            palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : sev.key === 'mod' ? 'terracotta' : 'sage'} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>เตียง {fam.bed}</span>
+              {days && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', background: 'var(--paper-3)', padding: '1px 5px', borderRadius: 99 }}>D {days}</span>}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {fam.relation} · GA {fam.ga}wk · BW {fam.bw}g
+            </div>
           </div>
-          <span style={{ fontSize: 10, fontWeight: 700, color: sev.color, letterSpacing: '0.02em' }}>{pillM.label}</span>
-        </div>
-        <Icon name="arrow-right" size={16} color="var(--ink-4)" style={{ flexShrink: 0 }} />
-      </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span className="serif" style={{ fontSize: 20, color: sev.color, lineHeight: 1 }}>{lastAss ? lastAss.total : '—'}</span>
+              <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: 'var(--mono)' }}>/104</span>
+              {flag && <Icon name="trend-up" size={12} color="var(--rose)" />}
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: sev.color, letterSpacing: '0.02em' }}>{pillM.label}</span>
+          </div>
+          <Icon name="arrow-right" size={16} color="var(--ink-4)" />
+        </button>
+      </div>
     );
   }
 
@@ -715,6 +820,6 @@ function ToastContainer() {
 
 Object.assign(window, {
   I18N, t, Icon, SeverityBadge, sevPill, MiniTrend, SubscaleBars,
-  AreaTrend, Avatar, TopNav, SectionHeading, StatCard, FamilyRow,
-  useIsMobile, SkeletonBlock, ToastContainer
+  AreaTrend, Avatar, TopNav, SlimHeader, BottomTabBar, SectionHeading,
+  StatCard, FamilyRow, useIsMobile, SkeletonBlock, ToastContainer
 });

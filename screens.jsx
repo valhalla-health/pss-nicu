@@ -479,18 +479,18 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
       )}
 
       {/* Severity legend */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: isMobile ? 6 : 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {[
-          { key: 'none',    label: 'ไม่เครียด',     color: 'var(--sev-none)',    range: '0' },
-          { key: 'mild',    label: 'เล็กน้อย',       color: 'var(--sev-mild)',    range: `1–${thresholds.mild - 1}` },
-          { key: 'mod',     label: 'ปานกลาง',        color: 'var(--sev-mod)',     range: `${thresholds.mild}–${thresholds.mod - 1}` },
-          { key: 'high',    label: 'มาก',            color: 'var(--sev-high)',    range: `${thresholds.mod}–${thresholds.high - 1}` },
-          { key: 'extreme', label: 'มากที่สุด',       color: 'var(--sev-extreme)', range: `${thresholds.high}+` },
+          { key: 'none',    label: 'ไม่เครียด',   color: 'var(--sev-none)',    range: '0' },
+          { key: 'mild',    label: 'เล็กน้อย',     color: 'var(--sev-mild)',    range: `1–${thresholds.mild - 1}` },
+          { key: 'mod',     label: 'ปานกลาง',      color: 'var(--sev-mod)',     range: `${thresholds.mild}–${thresholds.mod - 1}` },
+          { key: 'high',    label: 'มาก',          color: 'var(--sev-high)',    range: `${thresholds.mod}–${thresholds.high - 1}` },
+          { key: 'extreme', label: 'มากที่สุด',     color: 'var(--sev-extreme)', range: `${thresholds.high}+` },
         ].map(s =>
-          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--card)', border: '1px solid var(--line-soft)', borderRadius: 99, fontSize: 11, color: 'var(--ink-2)' }}>
+          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: isMobile ? '5px 10px' : '4px 10px', background: 'var(--card)', border: '1px solid var(--line-soft)', borderRadius: 99, fontSize: isMobile ? 13 : 11, color: 'var(--ink-2)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
             <span style={{ fontWeight: 600 }}>{s.label}</span>
-            <span style={{ fontFamily: 'var(--mono)', color: 'var(--ink-4)', fontSize: 10 }}>{s.range}</span>
+            {!isMobile && <span style={{ fontFamily: 'var(--mono)', color: 'var(--ink-4)', fontSize: 10 }}>{s.range}</span>}
           </div>
         )}
       </div>
@@ -498,19 +498,16 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
       {/* Two-column: Priority list + subscale aggregate */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: 20, marginBottom: 28 }}>
         {/* Priority */}
-        <div className="card" style={{ padding: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-            <div>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>ลำดับความสำคัญ</div>
-              <h3 className="serif" style={{ marginTop: 4 }}>ความเครียดสูงสุดวันนี้</h3>
-            </div>
-            <button onClick={() => onRoute('families')} style={{ fontSize: 12, color: 'var(--terracotta)', fontWeight: 600 }}>ดูทั้งหมด →</button>
+        <div className="card" style={{ padding: isMobile ? 16 : 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+            <h3 className="serif" style={{ fontSize: isMobile ? 18 : 20 }}>ความเครียดสูงสุด</h3>
+            <button onClick={() => onRoute('families')} style={{ fontSize: 13, color: 'var(--terracotta)', fontWeight: 600 }}>ดูทั้งหมด →</button>
           </div>
 
           {priorityList.length === 0 && (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--ink-4)' }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>✓</div>
-              <div style={{ fontSize: 13 }}>ไม่มีครอบครัวที่ต้องติดตามด่วน</div>
+              <div style={{ fontSize: 14 }}>ไม่มีครอบครัวที่ต้องติดตามด่วน</div>
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -519,31 +516,30 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
               return (
                 <button key={e.fam.famId} onClick={() => onOpenFamily(e.fam.famId)}
                 style={{
-                  display: 'grid', gridTemplateColumns: '24px auto 1fr auto auto', alignItems: 'center', gap: 14,
-                  padding: '12px 14px', textAlign: 'left',
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? 'auto 1fr auto' : '24px auto 1fr auto auto',
+                  alignItems: 'center', gap: isMobile ? 12 : 14,
+                  padding: isMobile ? '14px 12px' : '12px 14px', textAlign: 'left',
                   background: 'var(--paper)', border: '1px solid var(--line-soft)',
-                  borderRadius: 12, transition: 'background .15s'
+                  borderLeft: isMobile ? `3px solid ${sev.color}` : '1px solid var(--line-soft)',
+                  borderRadius: 12, transition: 'background .15s',
+                  touchAction: 'manipulation',
                 }}
                 onMouseEnter={(e2) => {e2.currentTarget.style.background = 'var(--paper-2)';}}
                 onMouseLeave={(e2) => {e2.currentTarget.style.background = 'var(--paper)';}}>
-                  <span className="mono" style={{ fontSize: 12, color: 'var(--ink-4)' }}>{String(i + 1).padStart(2, '0')}</span>
-                  <Avatar initials={bedAbbr(e.fam.bed)} size={32} _fontSize={bedFs(e.fam.bed, 32)}
+                  {!isMobile && <span className="mono" style={{ fontSize: 12, color: 'var(--ink-4)' }}>{String(i + 1).padStart(2, '0')}</span>}
+                  <Avatar initials={bedAbbr(e.fam.bed)} size={isMobile ? 40 : 32} _fontSize={bedFs(e.fam.bed, isMobile ? 40 : 32)}
                   palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : 'sage'} />
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>เตียง {e.fam.bed}</span>
-                      {(() => { const d = daysIn(e.fam.admitDate, e.fam.dayAdmit); return d ? <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: 'var(--mono)', background: 'var(--paper-3)', padding: '1px 6px', borderRadius: 99 }}>D {d}</span> : null; })()}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontSize: isMobile ? 15 : 13, fontWeight: 700 }}>เตียง {e.fam.bed}</span>
+                      {(() => { const d = daysIn(e.fam.admitDate, e.fam.dayAdmit); return d ? <span style={{ fontSize: 11, color: 'var(--ink-4)', fontFamily: 'var(--mono)', background: 'var(--paper-3)', padding: '1px 6px', borderRadius: 99 }}>D {d}</span> : null; })()}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{e.fam.relation} · {e.fam.dx}</div>
-                    {e.lastInterv && (
-                      <div style={{ fontSize: 10, color: 'var(--terracotta)', marginTop: 2 }}>
-                        ● {e.lastInterv.kind} <span style={{ color: 'var(--ink-4)' }}>{fmtDate(e.lastInterv.date)}</span>
-                      </div>
-                    )}
+                    <div style={{ fontSize: isMobile ? 13 : 11, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.fam.relation}{e.fam.dx ? ` · ${e.fam.dx}` : ''}</div>
                   </div>
-                  <MiniTrend values={e.trend} color={sev.color} width={60} height={22} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="serif" style={{ fontSize: 22, color: sev.color, lineHeight: 1 }}>{e.last.total}</span>
+                  {!isMobile && <MiniTrend values={e.trend} color={sev.color} width={60} height={22} />}
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-end' : 'center', gap: isMobile ? 4 : 10 }}>
+                    <span className="serif" style={{ fontSize: isMobile ? 24 : 22, color: sev.color, lineHeight: 1 }}>{e.last.total}</span>
                     <SeverityBadge severity={sev} lang={lang} size="sm" />
                   </div>
                 </button>);
@@ -552,11 +548,10 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
         </div>
 
         {/* Subscale aggregate */}
-        <div className="card" style={{ padding: 24 }}>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>ภาพรวมหอผู้ป่วย</div>
-          <h3 className="serif" style={{ marginTop: 4, marginBottom: 16 }}>แหล่งที่มาของความเครียด</h3>
-          <p style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
-            คะแนนเฉลี่ยแต่ละ subscale ของผู้ปกครองทุกรายในสัปดาห์นี้
+        <div className="card" style={{ padding: isMobile ? 16 : 24 }}>
+          <h3 className="serif" style={{ marginBottom: 6, fontSize: isMobile ? 18 : 20 }}>แหล่งความเครียด</h3>
+          <p style={{ fontSize: isMobile ? 14 : 13, color: 'var(--ink-3)', marginBottom: 18, lineHeight: 1.6 }}>
+            คะแนนเฉลี่ย subscale ของผู้ปกครองทุกราย
           </p>
           {subAgg && <SubscaleBars subTotals={subAgg} lang={lang} />}
           <div style={{ marginTop: 20, padding: 14, background: 'var(--peach-soft)', borderRadius: 10, fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5 }}>
@@ -567,13 +562,10 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
       </div>
 
       {/* Rising trend list */}
-      <div className="card" style={{ padding: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>ติดตาม</div>
-            <h3 className="serif" style={{ marginTop: 4 }}>แนวโน้มเพิ่มขึ้น</h3>
-          </div>
-          <span className="pill">{rising.length} รายที่ต้องระวัง</span>
+      <div className="card" style={{ padding: isMobile ? 16 : 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <h3 className="serif" style={{ fontSize: isMobile ? 18 : 20 }}>แนวโน้มเพิ่มขึ้น</h3>
+          <span className="pill" style={{ fontSize: isMobile ? 12 : 11 }}>{rising.length} รายที่ต้องระวัง</span>
         </div>
         {rising.length === 0 ?
         <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>ไม่มีแนวโน้มเพิ่มขึ้น ดีมากวันนี้</div> :
@@ -590,15 +582,15 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
                   <Avatar initials={bedAbbr(e.fam.bed)} size={36} _fontSize={bedFs(e.fam.bed, 36)}
                   palette={sev.key === 'extreme' ? 'plum' : 'terracotta'} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>เตียง {e.fam.bed}</div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>เตียง {e.fam.bed}</div>
+                    <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
                       {e.fam.admitDate
                         ? new Date(e.fam.admitDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })
                         : e.fam.dayAdmit ? `D${e.fam.dayAdmit}` : '—'}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--rose)', fontSize: 12, fontWeight: 700 }}>
-                    <Icon name="trend-up" size={14} /> +{delta}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--rose)', fontSize: 14, fontWeight: 700 }}>
+                    <Icon name="trend-up" size={16} /> +{delta}
                   </div>
                 </button>);
           })}
@@ -856,12 +848,12 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
   return (
     <div style={{ padding: isMobile ? '16px 16px 130px' : '24px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Breadcrumb */}
-      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-3)', marginBottom: 16, fontWeight: 600 }}>
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--ink-3)', marginBottom: 16, fontWeight: 600 }}>
         <Icon name="arrow-left" size={14} /> {t('back', lang)}
       </button>
 
       {/* Hero */}
-      <div className="card" style={{ padding: 28, marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
+      <div className="card" style={{ padding: isMobile ? 16 : 28, marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: -40, top: -40, width: 200, height: 200, borderRadius: '50%',
           background: `radial-gradient(circle, ${sev.color}15, transparent 70%)` }} />
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr auto', gap: isMobile ? 12 : 24, alignItems: isMobile ? 'flex-start' : 'center', position: 'relative' }}>
@@ -1365,7 +1357,7 @@ function CareAndLogTab({ sev, lang, interv, onSaveIntervention, carePlan, onUpda
                       {item.safety && <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--rose)', background: 'rgba(179,80,62,.12)', padding: '2px 6px', borderRadius: 99 }}>SAFETY</span>}
                       <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99, color: owner.color, background: owner.bg }}>{owner.label}</span>
                     </div>
-                    <span style={{ fontSize: 13, color: 'var(--ink-2)', textDecoration: checked ? 'line-through' : 'none', opacity: checked ? 0.55 : 1, lineHeight: 1.5 }}>{item.text}</span>
+                    <span style={{ fontSize: 14, color: 'var(--ink-2)', textDecoration: checked ? 'line-through' : 'none', opacity: checked ? 0.55 : 1, lineHeight: 1.65 }}>{item.text}</span>
                     {checked && meta && <div style={{ fontSize: 10, color: 'var(--ink-4)', marginTop: 3 }}>{meta}</div>}
                   </div>
                   {/* Quick-action: pre-fill intervention form */}
@@ -1448,7 +1440,7 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
 
   return (
     <div style={{ padding: isMobile ? '16px 16px 100px' : '24px 28px 80px', maxWidth: 920, margin: '0 auto' }}>
-      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-3)', marginBottom: 16, fontWeight: 600 }}>
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--ink-3)', marginBottom: 16, fontWeight: 600 }}>
         <Icon name="arrow-left" size={14} /> {t('back', lang)}
       </button>
 

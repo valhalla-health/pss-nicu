@@ -824,7 +824,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
 }
 
 // ===== FAMILY DETAIL ==============================================
-function FamilyDetailScreen({ famId, families, assessments, interventions, lang, thresholds, showSubscales, onBack, onNewAssessment, onOpenAlert, onSaveNote, onSaveIntervention, carePlan, onUpdateCarePlan }) {
+function FamilyDetailScreen({ famId, families, assessments, interventions, notes = [], lang, thresholds, showSubscales, onBack, onNewAssessment, onOpenAlert, onSaveNote, onSaveIntervention, carePlan, onUpdateCarePlan }) {
   const isMobile = useIsMobile();
   const fam = families.find((f) => f.famId === famId);
   const fa = assessments.filter((a) => a.famId === famId).sort((a, b) => a.date.localeCompare(b.date));
@@ -926,6 +926,17 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, lang,
               {savedNote && (
                 <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--sage-soft)', borderRadius: 8, fontSize: 12, color: 'var(--ink-2)' }}>
                   <strong>บันทึกล่าสุด:</strong> {savedNote}
+                </div>
+              )}
+              {notes.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>ประวัติบันทึก ({notes.length})</div>
+                  {[...notes].sort((a,b) => b.date.localeCompare(a.date)).map(n => (
+                    <div key={n.noteId} style={{ padding: '8px 12px', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, marginBottom: 6 }}>
+                      <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 3 }}>{fmtDate(n.date)} · {fmtBy(n.by)}</div>
+                      <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{n.text}</div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

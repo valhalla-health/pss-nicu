@@ -18,6 +18,7 @@ function App() {
   const [loading, setLoading]       = aS(false);
   const [loadError, setLoadError]   = aS(null);
   const [interventions, setInterventions] = aS([]);
+  const [notes, setNotes] = aS([]);
   const [carePlans, setCarePlans] = aS(() => {
     try { return JSON.parse(localStorage.getItem('pss_care_plans') || '{}'); }
     catch { return {}; }
@@ -29,7 +30,6 @@ function App() {
     if (!user?.token) return;
     setLoading(true);
     setLoadError(null);
-    const t = encodeURIComponent(user.token);
 
     // Safety net: abort after 20s so spinner never hangs forever
     const controller = new AbortController();
@@ -38,9 +38,10 @@ function App() {
       controller.abort();
     }, 20000);
 
-    // Flush offline assessment queue (fire-and-forget)
-    const q = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
-    if (q.length) {
+    // ── offline queue flush — also registered as online event listener ────────
+    const flushQueue = () => {
+      const q = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+      if (!q.length) return;
       Promise.all(q.map(ass =>
         fetch(API_URL, {
           method: 'POST',
@@ -57,12 +58,21 @@ function App() {
           window.showToast?.(`ซิงค์ ${q.length} รายการสำเร็จ ✓`, 'success');
         }
       });
-    }
+    };
+    flushQueue();
+    window.addEventListener('online', flushQueue);
 
     console.log('[PSS] Loading data from API...', API_URL);
+    const postLoad = (payload) => fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ ...payload, token: user.token }),
+      signal: controller.signal,
+    }).then(r => r.json());
+
     Promise.all([
-      fetch(`${API_URL}?action=getFamilies&token=${t}`, { signal: controller.signal }).then(r => r.json()),
-      fetch(`${API_URL}?action=getAssessments&token=${t}`, { signal: controller.signal }).then(r => r.json()),
+      postLoad({ action: 'getFamilies' }),
+      postLoad({ action: 'getAssessments' }),
     ]).then(([fData, aData]) => {
       console.log('[PSS] Data loaded:', { families: fData.status, assessments: aData.status });
       if (fData.status === 'ok') setFamilies(fData.families);
@@ -89,6 +99,26 @@ function App() {
       clearTimeout(timeoutId);
       setLoading(false);
     });
+
+    return () => {
+      controller.abort();
+      window.removeEventListener('online', flushQueue);
+    };
+  }, [user]);
+
+  // ── 55-min Google ID token silent refresh ───────────────────────────────────
+  aE(() => {
+    if (!user) return;
+    const id = setInterval(() => {
+      if (!window.google?.accounts?.id) return;
+      window.google.accounts.id.prompt((n) => {
+        if (n.isSkippedMoment() || n.isDismissedMoment()) {
+          console.warn('[PSS] Token refresh suppressed — forcing re-login');
+          setUser(null);
+        }
+      });
+    }, 55 * 60 * 1000);
+    return () => clearInterval(id);
   }, [user]);
 
   // Tweaks
@@ -159,14 +189,17 @@ function App() {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ ...payload, token: user?.token })
-    }).then(r => r.json());
+    }).then(r => r.json()).then(d => {
+      if (d.status === 'unauthorized') { setUser(null); throw new Error('unauthorized'); }
+      return d;
+    });
 
   const handleAssessmentSubmit = (r) => {
     const fam      = families.find(f => f.famId === openFamId) || {};
     const dayAdmit = fam.admitDate
-      ? Math.floor((Date.now() - new Date(fam.admitDate).getTime()) / 86400000) + 1
+      ? (() => { const [y,m,d] = fam.admitDate.split('-').map(Number); return Math.floor((Date.now() - new Date(y,m-1,d).getTime()) / 86400000) + 1; })()
       : (Number(fam.dayAdmit) || 0);
-    const assId = openFamId + '-' + Date.now();
+    const assId = openFamId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
     const ass = {
       assId, famId: openFamId, hospitalCode: user.hospitalCode,
       parentName: fam.parentName || '', bed: fam.bed || '',
@@ -216,6 +249,9 @@ function App() {
     const updated = { ...carePlans, [famId]: { ...(carePlans[famId] || {}), [idx]: entry } };
     setCarePlans(updated);
     localStorage.setItem('pss_care_plans', JSON.stringify(updated));
+    // Sync to GAS (fire-and-forget)
+    apiPost({ action: 'saveCarePlan', carePlan: { famId, itemIdx: idx, ...entry } })
+      .catch(err => console.warn('saveCarePlan:', err));
   };
 
   const handleSaveNote = (famId, text) => {
@@ -320,16 +356,44 @@ function App() {
   const openFamily = (id) => {
     setOpenFamId(id);
     setRoute('familyDetail');
-    // Lazy-load interventions for this family (merge: server replaces, local optimistic preserved for others)
-    fetch(`${API_URL}?action=getInterventions&famId=${encodeURIComponent(id)}&token=${encodeURIComponent(user.token)}`)
-      .then(r => r.json())
+    const lazyPost = (payload) => fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ ...payload, token: user.token }),
+    }).then(r => r.json());
+
+    // Lazy-load interventions (server replaces optimistic for this family)
+    lazyPost({ action: 'getInterventions', famId: id })
       .then(d => {
         if (d.status === 'ok') setInterventions(prev => [
           ...prev.filter(iv => iv.famId !== id),
           ...d.interventions
         ]);
-      })
-      .catch(() => {});
+      }).catch(() => {});
+
+    // Lazy-load notes
+    lazyPost({ action: 'getNotes', famId: id })
+      .then(d => {
+        if (d.status === 'ok') setNotes(prev => [
+          ...prev.filter(n => n.famId !== id),
+          ...d.notes
+        ]);
+      }).catch(() => {});
+
+    // Lazy-load care plan (server state wins over localStorage)
+    lazyPost({ action: 'getCarePlan', famId: id })
+      .then(d => {
+        if (d.status === 'ok' && d.carePlans?.length) {
+          const planMap = {};
+          d.carePlans.forEach(cp => {
+            planMap[cp.itemIdx] = {
+              checked: cp.checked === true || cp.checked === 'TRUE',
+              by: cp.by, at: cp.at,
+            };
+          });
+          setCarePlans(prev => ({ ...prev, [id]: planMap }));
+        }
+      }).catch(() => {});
   };
   const newAss = (id) => { setOpenFamId(id); setRoute('assessment'); };
 
@@ -372,7 +436,8 @@ function App() {
         )}
         {route === 'familyDetail' && openFamId && (
           <FamilyDetailScreen famId={openFamId} families={families} assessments={assessments}
-            interventions={interventions} lang={lang} thresholds={thresholds} showSubscales={showSubscales}
+            interventions={interventions} notes={notes.filter(n => n.famId === openFamId)}
+            lang={lang} thresholds={thresholds} showSubscales={showSubscales}
             onBack={() => setRoute('families')}
             onNewAssessment={() => newAss(openFamId)}
             onOpenAlert={() => setRoute('alerts')}
@@ -481,7 +546,7 @@ function App() {
           onChange={v => setTweak('thMild', v)} />
         <TweakSlider label="Moderate ≥" value={tweaks.thMod} min={35} max={70} step={1}
           onChange={v => setTweak('thMod', v)} />
-        <TweakSlider label="High ≥" value={tweaks.thHigh} min={60} max={100} step={1}
+        <TweakSlider label="Extreme ≥" value={tweaks.thHigh} min={60} max={100} step={1}
           onChange={v => setTweak('thHigh', v)} />
       </TweaksPanel>}
     </div>

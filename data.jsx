@@ -90,140 +90,6 @@ function severity(total, th = { mild: 27, mod: 53, high: 79 }) {
   return                       { key: 'none',    en: 'No stress', th: 'ไม่เครียด',     color: 'var(--sev-none)' };
 }
 
-// =========================================================
-// Mock families + assessments
-// =========================================================
-
-const TODAY = new Date();
-function daysAgo(n) {
-  const d = new Date(TODAY); d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-
-const FAMILIES = [
-  {
-    famId: 'F001', bed: 'NICU-04', infantId: 'HN5821042',
-    parentName: 'Anong Suwannakit', parentInitials: 'A.S.', relation: 'Mother',
-    babyName: 'Baby Suwannakit', ga: 28, bw: 1120, dayAdmit: 14,
-    dx: 'RDS, ventilator support', flag: 'rising',
-  },
-  {
-    famId: 'F002', bed: 'NICU-07', infantId: 'HN5821067',
-    parentName: 'Tanaporn Wattanakul', parentInitials: 'T.W.', relation: 'Father',
-    babyName: 'Baby Wattanakul', ga: 32, bw: 1820, dayAdmit: 5,
-    dx: 'TTN, CPAP weaning', flag: 'stable',
-  },
-  {
-    famId: 'F003', bed: 'NICU-12', infantId: 'HN5821101',
-    parentName: 'Sirinya Choosri', parentInitials: 'S.C.', relation: 'Mother',
-    babyName: 'Baby Choosri', ga: 26, bw: 880, dayAdmit: 21,
-    dx: 'Extreme prematurity, PDA', flag: 'critical',
-  },
-  {
-    famId: 'F004', bed: 'NICU-02', infantId: 'HN5821023',
-    parentName: 'Pim Lertkul', parentInitials: 'P.L.', relation: 'Mother',
-    babyName: 'Baby Lertkul', ga: 34, bw: 2210, dayAdmit: 3,
-    dx: 'Mild jaundice, phototherapy', flag: 'stable',
-  },
-  {
-    famId: 'F005', bed: 'NICU-09', infantId: 'HN5821088',
-    parentName: 'Kanya Phongam', parentInitials: 'K.P.', relation: 'Mother',
-    babyName: 'Baby Phongam', ga: 30, bw: 1540, dayAdmit: 10,
-    dx: 'Sepsis, antibiotics', flag: 'rising',
-  },
-  {
-    famId: 'F006', bed: 'NICU-15', infantId: 'HN5821119',
-    parentName: 'Niran Jaikla', parentInitials: 'N.J.', relation: 'Father',
-    babyName: 'Baby Jaikla', ga: 36, bw: 2480, dayAdmit: 2,
-    dx: 'Observation, transitional', flag: 'new',
-  },
-  {
-    famId: 'F007', bed: 'NICU-11', infantId: 'HN5821095',
-    parentName: 'Wanida Saetang', parentInitials: 'W.S.', relation: 'Mother',
-    babyName: 'Baby Saetang', ga: 29, bw: 1280, dayAdmit: 18,
-    dx: 'BPD, oxygen support', flag: 'stable',
-  },
-  {
-    famId: 'F008', bed: 'NICU-06', infantId: 'HN5821054',
-    parentName: 'Chayanin Bunsong', parentInitials: 'C.B.', relation: 'Mother',
-    babyName: 'Baby Bunsong', ga: 31, bw: 1670, dayAdmit: 7,
-    dx: 'NEC suspected, NPO', flag: 'rising',
-  },
-];
-
-// Helpers to make plausible answers given subscale targets
-function answersFor(targets /* {ss, ia, pr, sc} subscale RAW totals */) {
-  const out = {};
-  for (const sub of ['ss', 'ia', 'pr', 'sc']) {
-    const items = PSS_QUESTIONS[sub];
-    let remaining = targets[sub];
-    items.forEach((it, idx) => {
-      const left = items.length - idx;
-      const max = Math.min(4, remaining);
-      // Spread values so it doesn't bunch
-      let v = Math.round(remaining / left);
-      v = Math.max(0, Math.min(max, v + (idx % 2 === 0 ? 0 : (Math.random() < 0.5 ? -1 : 1))));
-      v = Math.max(0, Math.min(4, v));
-      remaining -= v;
-      out[it.id] = v;
-    });
-  }
-  return out;
-}
-
-function makeAss(famId, dayOffset, dayAdmit, subTotals, notes) {
-  const total = subTotals.ss + subTotals.ia + subTotals.pr + subTotals.sc;
-  return {
-    assId: famId + '-' + dayOffset,
-    famId,
-    date: daysAgo(dayOffset),
-    dayAdmit,
-    subTotals,
-    answers: answersFor(subTotals),
-    total,
-    notes: notes || '',
-    by: 'N. Chiraporn (RN)',
-  };
-}
-
-const ASSESSMENTS = [
-  // F001 — rising trend, currently moderate-high
-  makeAss('F001', 12, 2, { ss: 14, ia: 22, pr: 16, sc:  8 }, 'Mother first introduced to NICU environment.'),
-  makeAss('F001',  7, 7, { ss: 16, ia: 26, pr: 19, sc: 10 }, 'Increased anxiety after PDA discussion.'),
-  makeAss('F001',  3, 11, { ss: 18, ia: 29, pr: 21, sc: 12 }, 'Tearful during today\'s visit.'),
-
-  // F002 — stable / mild
-  makeAss('F002',  4, 1, { ss:  8, ia: 12, pr: 10, sc:  6 }, 'Father appears engaged.'),
-  makeAss('F002',  1, 4, { ss:  9, ia: 13, pr: 11, sc:  6 }, 'Asked good questions during round.'),
-
-  // F003 — critical / extreme stress
-  makeAss('F003', 18, 3, { ss: 20, ia: 30, pr: 20, sc: 14 }, 'New admission — extremely emotional.'),
-  makeAss('F003', 12, 9, { ss: 19, ia: 28, pr: 22, sc: 13 }, 'Considering kangaroo care.'),
-  makeAss('F003',  6, 15, { ss: 21, ia: 32, pr: 23, sc: 16 }, 'Mother declined visit yesterday.'),
-  makeAss('F003',  1, 20, { ss: 22, ia: 33, pr: 22, sc: 17 }, 'PRIORITY — referral to social work.'),
-
-  // F004 — minimal stress
-  makeAss('F004',  2, 1, { ss:  4, ia:  7, pr:  6, sc:  4 }, 'Mother calm, asked appropriate questions.'),
-  makeAss('F004',  0, 3, { ss:  5, ia:  6, pr:  5, sc:  3 }, 'Engaging well with team.'),
-
-  // F005 — rising
-  makeAss('F005',  8, 2, { ss: 10, ia: 16, pr: 12, sc:  7 }, ''),
-  makeAss('F005',  4, 6, { ss: 13, ia: 21, pr: 15, sc:  9 }, 'Sepsis update was difficult to receive.'),
-  makeAss('F005',  1, 9, { ss: 16, ia: 25, pr: 17, sc: 11 }, ''),
-
-  // F006 — new / first assessment
-  makeAss('F006',  1, 1, { ss:  9, ia: 11, pr:  8, sc:  5 }, 'First-time parents.'),
-
-  // F007 — stable mod
-  makeAss('F007', 14, 4, { ss: 12, ia: 18, pr: 13, sc:  8 }, ''),
-  makeAss('F007',  7, 11, { ss: 11, ia: 17, pr: 12, sc:  8 }, ''),
-  makeAss('F007',  2, 16, { ss: 11, ia: 16, pr: 11, sc:  7 }, 'Stable, family adapting well.'),
-
-  // F008 — concerning rise
-  makeAss('F008',  5, 2, { ss: 11, ia: 19, pr: 14, sc:  9 }, ''),
-  makeAss('F008',  2, 5, { ss: 14, ia: 24, pr: 18, sc: 12 }, 'NEC discussion — significant rise.'),
-];
-
 // Activity recommendations by severity (paraphrased from F-WI-RAISO-QS-201/01)
 // RECOMMENDATIONS — intervention protocol per severity level
 // item fields: text, owner ('nurse'|'doctor'|'sw'|'psych'), urgent (bool), ivKind (string|null), safety (bool)
@@ -273,25 +139,11 @@ const RECOMMENDATIONS = {
   },
 };
 
-// Users
-const USERS = [
-  { id: 'u1', name: 'Dr. Pichaya Ratan',    role: 'doctor', initials: 'PR', dept: 'Neonatology' },
-  { id: 'u2', name: 'N. Chiraporn Thanin',  role: 'nurse',  initials: 'CT', dept: 'NICU Day Shift' },
-  { id: 'u3', name: 'N. Malee Sirikit',     role: 'nurse',  initials: 'MS', dept: 'NICU Night Shift' },
-  { id: 'u4', name: 'Admin Suchart',        role: 'admin',  initials: 'SU', dept: 'IT / Quality' },
-];
-
-// Intervention log — sample entries
-const INTERVENTIONS = [
-  { famId: 'F003', date: daysAgo(2), by: 'Dr. Pichaya Ratan', kind: 'Family meeting',
-    note: '45-min discussion re: prognosis. Mother tearful but engaged.' },
-  { famId: 'F003', date: daysAgo(1), by: 'SW. Wandee P.', kind: 'Social work',
-    note: 'Connected family with NICU peer support group.' },
-  { famId: 'F001', date: daysAgo(5), by: 'N. Chiraporn Thanin', kind: 'Skin-to-skin',
-    note: 'First kangaroo care session. Mother very emotional but positive.' },
-  { famId: 'F005', date: daysAgo(3), by: 'N. Malee Sirikit', kind: 'Education',
-    note: 'Reviewed sepsis treatment plan. Provided written materials.' },
-];
+const TODAY = new Date();
+function daysAgo(n) {
+  const d = new Date(TODAY); d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
 
 // Expose to window for cross-script access
 Object.assign(window, {
@@ -299,11 +151,7 @@ Object.assign(window, {
   SUBSCALE_META,
   STRESS_LEVELS,
   severity,
-  FAMILIES,
-  ASSESSMENTS,
   RECOMMENDATIONS,
-  USERS,
-  INTERVENTIONS,
   daysAgo,
   TODAY,
 });

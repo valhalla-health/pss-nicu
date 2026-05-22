@@ -31,6 +31,37 @@ function App() {
     setLoading(true);
     setLoadError(null);
 
+    // ── Dev bypass — no GAS calls, inject sample data ────────────────────────
+    if (user.token === 'dev-bypass') {
+      const hc = user.hospitalCode;
+      setFamilies([
+        { famId:'DEV001', hospitalCode:hc, bed:'NICU-01', infantId:'HN-DEV01',
+          parentName:'ทดสอบ ระบบ', parentInitials:'ท.ร.', relation:'แม่', babyName:'ด.ช.ทดสอบ',
+          ga:28, bw:1100, admitDate: new Date(Date.now()-14*86400000).toISOString().slice(0,10),
+          dx:'RDS ventilator', active:true },
+        { famId:'DEV002', hospitalCode:hc, bed:'NICU-05', infantId:'HN-DEV02',
+          parentName:'ทดสอบ สอง', parentInitials:'ท.ส.', relation:'พ่อ', babyName:'ด.ญ.ทดสอบ',
+          ga:32, bw:1600, admitDate: new Date(Date.now()-4*86400000).toISOString().slice(0,10),
+          dx:'TTN CPAP', active:true },
+      ]);
+      setAssessments([
+        { assId:'DEV001-1', famId:'DEV001', hospitalCode:hc,
+          date: new Date(Date.now()-12*86400000).toISOString().slice(0,10), dayAdmit:2,
+          ssScore:16, iaScore:28, prScore:20, scScore:12, total:76, severity:'high',
+          notes:'แม่กังวลมาก', by:'Dev', subTotals:{ss:16,ia:28,pr:20,sc:12} },
+        { assId:'DEV001-2', famId:'DEV001', hospitalCode:hc,
+          date: new Date(Date.now()-7*86400000).toISOString().slice(0,10), dayAdmit:7,
+          ssScore:18, iaScore:30, prScore:22, scScore:14, total:84, severity:'extreme',
+          notes:'เครียดมากขึ้น — ส่งต่อ SW', by:'Dev', subTotals:{ss:18,ia:30,pr:22,sc:14} },
+        { assId:'DEV002-1', famId:'DEV002', hospitalCode:hc,
+          date: new Date(Date.now()-3*86400000).toISOString().slice(0,10), dayAdmit:1,
+          ssScore:8, iaScore:12, prScore:9, scScore:5, total:34, severity:'mod',
+          notes:'', by:'Dev', subTotals:{ss:8,ia:12,pr:9,sc:5} },
+      ]);
+      setLoading(false);
+      return;
+    }
+
     // Safety net: abort after 20s so spinner never hangs forever
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -184,8 +215,9 @@ function App() {
   }, [families, assessments, thresholds]);
 
   // ── API helpers (only called when user is set) ────────────────────────────
-  const apiPost = (payload) =>
-    fetch(API_URL, {
+  const apiPost = (payload) => {
+    if (user?.token === 'dev-bypass') return Promise.resolve({ status: 'ok' });
+    return fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ ...payload, token: user?.token })
@@ -193,6 +225,7 @@ function App() {
       if (d.status === 'unauthorized') { setUser(null); throw new Error('unauthorized'); }
       return d;
     });
+  };
 
   const handleAssessmentSubmit = (r) => {
     const fam      = families.find(f => f.famId === openFamId) || {};
@@ -356,6 +389,7 @@ function App() {
   const openFamily = (id) => {
     setOpenFamId(id);
     setRoute('familyDetail');
+    if (user?.token === 'dev-bypass') return; // skip lazy-loads in dev mode
     const lazyPost = (payload) => fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },

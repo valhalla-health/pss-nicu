@@ -233,38 +233,6 @@ function LoginScreen({ onLogin, lang }) {
           </div>
         )}
 
-        {/* ── Dev bypass — only visible when PSS_DEV_MODE = true ───────────── */}
-        {window.PSS_DEV_MODE && (
-          <div style={{
-            marginTop: 28, padding: '14px 16px',
-            border: '1.5px dashed rgba(79,93,138,0.35)',
-            borderRadius: 12, background: 'rgba(79,93,138,0.04)',
-          }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
-              🔧 Dev bypass
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[
-                { code: 'KCMH', name: 'โรงพยาบาลจุฬาลงกรณ์' },
-                { code: 'SPR',  name: 'โรงพยาบาลสวรรค์ประชารักษ์' },
-              ].map(({ code, name }) => (
-                <button key={code}
-                  className="btn btn-ghost"
-                  style={{ flex: 1, fontSize: 12, padding: '8px 10px' }}
-                  onClick={() => onLogin({
-                    token: 'dev-bypass',
-                    email: 'dev@test.local',
-                    name: 'Dev User',
-                    role: 'admin',
-                    hospitalCode: code,
-                    hospitalName: name,
-                  })}>
-                  {code}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Footer — institutional trust signals */}

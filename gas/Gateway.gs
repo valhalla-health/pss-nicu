@@ -1,4 +1,4 @@
-// PSS:NICU — Auth Gateway GAS v1.0
+// PSS:NICU — Auth Gateway GAS v1.1
 // Central login router: Google token → hospital apiUrl + user info
 // No patient data stored here — this script is login-only
 //
@@ -22,7 +22,10 @@ function out(obj) {
 
 function getRegistry() {
   const ssId = PropertiesService.getScriptProperties().getProperty('GATEWAY_SS_ID');
-  return SpreadsheetApp.openById(ssId).getSheetByName('registry');
+  if (!ssId) throw new Error('GATEWAY_SS_ID script property not set');
+  const sheet = SpreadsheetApp.openById(ssId).getSheetByName('registry');
+  if (!sheet) throw new Error('Sheet "registry" not found in spreadsheet');
+  return sheet;
 }
 
 function verifyGoogleToken(token) {
@@ -48,21 +51,25 @@ function verifyGoogleToken(token) {
 }
 
 function doPost(e) {
-  const body = JSON.parse(e.postData.contents);
-  if (body.action !== 'login') return out({ status: 'unknown_action' });
+  try {
+    const body = JSON.parse(e.postData.contents);
+    if (body.action !== 'login') return out({ status: 'unknown_action' });
 
-  const verified = verifyGoogleToken(body.token);
-  if (!verified) return out({ status: 'unauthorized' });
+    const verified = verifyGoogleToken(body.token);
+    if (!verified) return out({ status: 'unauthorized' });
 
-  const rows = getRegistry().getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    const [email, name, role, hospitalCode, hospitalName, apiUrl, active] = rows[i];
-    if (email !== verified.email) continue;
-    if (active !== true && String(active).toUpperCase() !== 'TRUE')
-      return out({ status: 'unauthorized' });
-    return out({ status: 'ok', email: verified.email, name, role, hospitalCode, hospitalName, apiUrl });
+    const rows = getRegistry().getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const [email, name, role, hospitalCode, hospitalName, apiUrl, active] = rows[i];
+      if (String(email).trim().toLowerCase() !== verified.email.toLowerCase()) continue;
+      if (active !== true && String(active).trim().toUpperCase() !== 'TRUE')
+        return out({ status: 'suspended' });
+      return out({ status: 'ok', email: verified.email, name, role, hospitalCode, hospitalName, apiUrl });
+    }
+    return out({ status: 'not_found' });
+  } catch (err) {
+    return out({ status: 'config_error', message: err.message });
   }
-  return out({ status: 'unauthorized' });
 }
 
 function doGet() {

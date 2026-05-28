@@ -46,11 +46,18 @@ function LoginScreen({ onLogin, lang }) {
               body: JSON.stringify({ action: 'login', token: resp.credential })
             });
             const data = await res.json();
-            if (data.status !== 'ok') throw new Error('ไม่พบบัญชีนี้ในระบบ หรือบัญชีถูกระงับ');
-            sessionStorage.setItem('pss_token', resp.credential);
-            onLogin({ ...data, token: resp.credential });
+            if (data.status === 'ok') {
+              sessionStorage.setItem('pss_token', resp.credential);
+              onLogin({ ...data, token: resp.credential });
+              return;
+            }
+            if (data.status === 'suspended')
+              throw new Error('บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+            if (data.status === 'config_error')
+              throw new Error('ระบบ Gateway ตั้งค่าไม่สมบูรณ์ กรุณาติดต่อผู้ดูแลระบบ (config_error)');
+            throw new Error('ไม่พบบัญชีนี้ในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มสิทธิ์');
           } catch (err) {
-            setError('ไม่พบบัญชีนี้ในระบบ หรือเกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+            setError(err.message || 'เชื่อมต่อระบบไม่ได้ กรุณาลองอีกครั้ง');
             setLoading(false);
             setClicked(false);
           }

@@ -40,7 +40,7 @@ function LoginScreen({ onLogin, lang }) {
           setLoading(true);
           setError(null);
           try {
-            const res = await fetch(window.PSS_API_URL, {
+            const res = await fetch(window.PSS_GATEWAY_URL || window.PSS_API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({ action: 'login', token: resp.credential })
@@ -1816,9 +1816,12 @@ function AdminScreen({ families, assessments, lang, thresholds, user }) {
   const [staffLoading, setStaffLoading] = uS(true);
 
   uE(() => {
-    if (!user?.token || !window.PSS_API_URL) return;
-    fetch(`${window.PSS_API_URL}?action=getStaff&token=${encodeURIComponent(user.token)}`)
-      .then(r => r.json())
+    if (!user?.token || !user?.apiUrl) return;
+    fetch(user.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getStaff', token: user.token })
+    }).then(r => r.json())
       .then(d => { if (d.status === 'ok') setStaff(d.staff); })
       .catch(() => {})
       .finally(() => setStaffLoading(false));

@@ -4,7 +4,9 @@
 
 const { useState: aS, useEffect: aE, useMemo: aM } = React;
 
-const API_URL          = window.PSS_API_URL || '';
+// Gateway URL — single login endpoint for all hospitals
+// Falls back to PSS_API_URL so existing deployments keep working until gateway is live
+const GATEWAY_URL       = window.PSS_GATEWAY_URL || window.PSS_API_URL || '';
 const OFFLINE_QUEUE_KEY = 'pss_pending_assessments';
 
 function App() {
@@ -30,7 +32,7 @@ function App() {
   aE(() => {
     const stored = sessionStorage.getItem('pss_token');
     if (!stored) return;
-    fetch(API_URL, {
+    fetch(GATEWAY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'login', token: stored })
@@ -57,7 +59,7 @@ function App() {
       const q = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
       if (!q.length) return;
       Promise.all(q.map(ass =>
-        fetch(API_URL, {
+        fetch(user?.apiUrl || window.PSS_API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'saveAssessment', ass, token: user.token })
@@ -76,8 +78,8 @@ function App() {
     flushQueue();
     window.addEventListener('online', flushQueue);
 
-    console.log('[PSS] Loading data from API...', API_URL);
-    const postLoad = (payload) => fetch(API_URL, {
+    console.log('[PSS] Loading data from API...', user.apiUrl);
+    const postLoad = (payload) => fetch(user?.apiUrl || window.PSS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ ...payload, token: user.token }),
@@ -205,7 +207,7 @@ function App() {
 
   // ── API helpers (only called when user is set) ────────────────────────────
   const apiPost = (payload) => {
-    return fetch(API_URL, {
+    return fetch(user?.apiUrl || window.PSS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ ...payload, token: user?.token })
@@ -376,7 +378,7 @@ function App() {
   const openFamily = (id) => {
     setOpenFamId(id);
     setRoute('familyDetail');
-    const lazyPost = (payload) => fetch(API_URL, {
+    const lazyPost = (payload) => fetch(user?.apiUrl || window.PSS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ ...payload, token: user.token }),

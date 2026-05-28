@@ -644,24 +644,16 @@ const KCMH_BEDS = [
   '1','2','3','4','5','6','7','8','9','10','11','12',
   'iso 1-1','iso 1-2','iso 2-1','iso 2-2','iso 3-1','iso 3-2','iso 3-3','iso 3-4'
 ];
-// Hospital-specific bed list — set window.PSS_BEDS in index.html to override KCMH default
-const BEDS = window.PSS_BEDS || KCMH_BEDS;
+const SPR_BEDS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+const getBeds = (hospitalCode) => hospitalCode === 'SPR' ? SPR_BEDS : (window.PSS_BEDS || KCMH_BEDS);
 
-function AddFamilyForm({ onSave, onCancel, lang, isMobile }) {
-  const empty = { bed: BEDS[0], name: '', initials: '', infantId:'', ga:'', bw:'', admitDate:'', dx:'' };
+function AddFamilyForm({ onSave, onCancel, lang, isMobile, hospitalCode }) {
+  const beds = getBeds(hospitalCode);
+  const empty = { bed: beds[0], infantId:'', ga:'', bw:'', admitDate:'', dx:'' };
   const [f, setF] = uS(empty);
-  const [initialsTouched, setInitialsTouched] = uS(false);
   const [saving, setSaving] = uS(false);
 
   const set = (k, v) => setF(prev => ({ ...prev, [k]: v }));
-  const setName = (v) => {
-    setF(prev => {
-      const next = { ...prev, name: v };
-      if (!initialsTouched) next.initials = deriveInitials(v);
-      return next;
-    });
-  };
-  const setInitials = (v) => { setInitialsTouched(true); set('initials', v); };
   const valid = !!f.bed;
 
   const submit = () => {
@@ -684,25 +676,11 @@ function AddFamilyForm({ onSave, onCancel, lang, isMobile }) {
     <div className={`card scale-in${isMobile ? ' bottom-sheet' : ''}`} style={{ padding: 28, marginBottom: isMobile ? 0 : 24 }}>
       <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 20 }}>เพิ่มครอบครัวใหม่</div>
 
-      {/* Name + initials — primary identifier across bed changes */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16, marginBottom: 16 }}>
-        <div>
-          <label style={labelStyle}>ชื่อ-สกุล ผู้ปกครอง *</label>
-          <input value={f.name} onChange={e => setName(e.target.value)} placeholder="เช่น สมชาย แซ่หวัง" style={inputStyle} autoFocus />
-        </div>
-        <div>
-          <label style={labelStyle}>ชื่อย่อ</label>
-          <input value={f.initials} onChange={e => setInitials(e.target.value)} maxLength={4}
-            placeholder={f.name ? deriveInitials(f.name) : 'สซ'}
-            style={{ ...inputStyle, fontFamily: 'var(--mono)', textAlign: 'center', letterSpacing: '0.05em' }} />
-        </div>
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 16 }}>
         <div>
           <label style={labelStyle}>เตียง *</label>
-          <select value={f.bed} onChange={e => set('bed', e.target.value)} style={inputStyle}>
-            {BEDS.map(b => <option key={b} value={b}>{b}</option>)}
+          <select value={f.bed} onChange={e => set('bed', e.target.value)} style={inputStyle} autoFocus>
+            {beds.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
         </div>
         <div>
@@ -807,7 +785,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
         <div className="sheet-overlay" onClick={() => setShowAddForm(false)} />
       )}
       {showAddForm && (
-        <AddFamilyForm lang={lang} isMobile={isMobile}
+        <AddFamilyForm lang={lang} isMobile={isMobile} hospitalCode={user?.hospitalCode}
           onCancel={() => setShowAddForm(false)}
           onSave={(fam) => { onAddFamily(fam); setShowAddForm(false); }} />
       )}
@@ -1065,7 +1043,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, notes
             <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ink-3)', display: 'block', marginBottom: 6 }}>เตียงใหม่</label>
             <select value={pendingBed} onChange={(e) => setPendingBed(e.target.value)}
               style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 14, background: 'var(--card)', fontFamily: 'var(--sans)', marginBottom: 20 }}>
-              {(window.PSS_BEDS || ['1','2','3','4','5','6','7','8','9','10','11','12','iso 1-1','iso 1-2','iso 2-1','iso 2-2','iso 3-1','iso 3-2','iso 3-3','iso 3-4']).map(b => (
+              {getBeds(fam.hospitalCode).map(b => (
                 <option key={b} value={b}>เตียง {b}{String(b) === String(fam.bed) ? ' (ปัจจุบัน)' : ''}</option>
               ))}
             </select>

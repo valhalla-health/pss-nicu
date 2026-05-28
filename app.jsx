@@ -4,15 +4,41 @@
 
 const { useState: aS, useEffect: aE, useMemo: aM } = React;
 
-// Gateway URL — single login endpoint for all hospitals
-// Falls back to PSS_API_URL so existing deployments keep working until gateway is live
 const GATEWAY_URL       = window.PSS_GATEWAY_URL || window.PSS_API_URL || '';
 const OFFLINE_QUEUE_KEY = 'pss_pending_assessments';
 
 function App() {
   const isCompact = useIsMobile(1024);
-  const isMobLoad = useIsMobile();
   const [user, setUser]           = aS(null);
+  const [editAssId, setEditAssId] = aS(null); // when set, AssessmentScreen runs in edit mode
+  // ── Session restore ────────────────────────────────────────────────────
+  // If the page reloads mid-session we still have the Google ID token in
+  // sessionStorage. Re-verify it with GAS instead of forcing a re-sign-in.
+  // Quietly bails out if the token has expired or the user is offline.
+  const [restoring, setRestoring] = aS(() => !!sessionStorage.getItem('pss_token') && !!GATEWAY_URL);
+  aE(() => {
+    if (!restoring) return;
+    const token = sessionStorage.getItem('pss_token');
+    if (!token) { setRestoring(false); return; }
+    let cancelled = false;
+    const timer = setTimeout(() => { if (!cancelled) { setRestoring(false); } }, 8000);
+    fetch(GATEWAY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'login', token })
+    }).then(r => r.json()).then(d => {
+      if (cancelled) return;
+      if (d.status === 'ok') setUser({ ...d, token });
+      else sessionStorage.removeItem('pss_token');
+    }).catch(() => {
+      sessionStorage.removeItem('pss_token');
+    }).finally(() => {
+      clearTimeout(timer);
+      if (!cancelled) setRestoring(false);
+    });
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+
   const [route, setRoute]         = aS('dashboard');
   const [openFamId, setOpenFamId] = aS(null);
   const [resultData, setResultData] = aS(null);
@@ -28,24 +54,69 @@ function App() {
   });
   const [showSearch, setShowSearch] = aS(false);
 
-  // Restore session from sessionStorage on mount (survives page reload)
-  aE(() => {
-    const stored = sessionStorage.getItem('pss_token');
-    if (!stored) return;
-    fetch(GATEWAY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'login', token: stored })
-    }).then(r => r.json())
-      .then(d => { if (d.status === 'ok') setUser({ ...d, token: stored }); })
-      .catch(() => {});
-  }, []);
-
   // Load data from API after login
   aE(() => {
     if (!user?.token) return;
     setLoading(true);
     setLoadError(null);
+
+    // ── Dev bypass — no GAS calls, inject sample data ────────────────────────
+    if (user.token === 'dev-bypass') {
+      const hc = user.hospitalCode;
+      setFamilies([
+        { famId:'DEV001', hospitalCode:hc, bed:'5', infantId:'1234/69',
+          name:'สมชาย แซ่หวัง', initials:'สซ',
+          parentName:'ทดสอบ ระบบ', parentInitials:'ท.ร.', relation:'มารดา', babyName:'ด.ช.ทดสอบ',
+          ga:28, bw:1100, admitDate: new Date(Date.now()-14*86400000).toISOString().slice(0,10),
+          dx:'RDS ventilator', active:true },
+        { famId:'DEV002', hospitalCode:hc, bed:'iso 2-1', infantId:'1235/69',
+          name:'มาลี จันทร์สว่าง', initials:'มจ',
+          parentName:'ทดสอบ สอง', parentInitials:'ท.ส.', relation:'บิดา', babyName:'ด.ญ.ทดสอบ',
+          ga:32, bw:1600, admitDate: new Date(Date.now()-4*86400000).toISOString().slice(0,10),
+          dx:'TTN CPAP', active:true },
+        { famId:'DEV003', hospitalCode:hc, bed:'12', infantId:'1236/69',
+          name:'ปิยะนุช วงศ์พระ', initials:'ปว',
+          parentName:'ทดสอบ สาม', parentInitials:'ท.ส.', relation:'มารดา', babyName:'ด.ช.ทดสอบ',
+          ga:36, bw:2400, admitDate: new Date(Date.now()-9*86400000).toISOString().slice(0,10),
+          dx:'Sepsis', active:true },
+      ]);
+      setAssessments([
+        { assId:'DEV001-1', famId:'DEV001', hospitalCode:hc,
+          date: new Date(Date.now()-12*86400000).toISOString().slice(0,10), dayAdmit:2,
+          ss1:3, ss2:3, ss3:3, ss4:3, ss5:2, ss6:2,
+          ia1:3, ia2:3, ia3:3, ia4:3, ia5:3, ia6:3, ia7:3, ia8:4, ia9:3,
+          pr1:4, pr2:3, pr3:4, pr4:3, pr5:3, pr6:3,
+          sc1:3, sc2:3, sc3:2, sc4:2, sc5:2,
+          ssScore:16, iaScore:28, prScore:20, scScore:12, total:76, severity:'high',
+          notes:'แม่กังวลมาก', by:'Dev', assessedBy:'มารดา', subTotals:{ss:16,ia:28,pr:20,sc:12} },
+        { assId:'DEV001-2', famId:'DEV001', hospitalCode:hc,
+          date: new Date(Date.now()-7*86400000).toISOString().slice(0,10), dayAdmit:7,
+          ss1:3, ss2:3, ss3:3, ss4:3, ss5:3, ss6:3,
+          ia1:4, ia2:3, ia3:4, ia4:3, ia5:3, ia6:4, ia7:3, ia8:3, ia9:3,
+          pr1:4, pr2:4, pr3:4, pr4:3, pr5:4, pr6:3,
+          sc1:3, sc2:3, sc3:3, sc4:2, sc5:3,
+          ssScore:18, iaScore:30, prScore:22, scScore:14, total:84, severity:'extreme',
+          notes:'เครียดมากขึ้น — ส่งต่อ SW', by:'Dev', assessedBy:'มารดา', subTotals:{ss:18,ia:30,pr:22,sc:14} },
+        { assId:'DEV002-1', famId:'DEV002', hospitalCode:hc,
+          date: new Date(Date.now()-3*86400000).toISOString().slice(0,10), dayAdmit:1,
+          ss1:2, ss2:2, ss3:1, ss4:1, ss5:1, ss6:1,
+          ia1:2, ia2:2, ia3:1, ia4:1, ia5:1, ia6:1, ia7:2, ia8:1, ia9:1,
+          pr1:2, pr2:2, pr3:1, pr4:1, pr5:1, pr6:2,
+          sc1:1, sc2:1, sc3:1, sc4:1, sc5:1,
+          ssScore:8, iaScore:12, prScore:9, scScore:5, total:34, severity:'mod',
+          notes:'', by:'Dev', assessedBy:'บิดา', subTotals:{ss:8,ia:12,pr:9,sc:5} },
+        { assId:'DEV003-1', famId:'DEV003', hospitalCode:hc,
+          date: new Date(Date.now()-6*86400000).toISOString().slice(0,10), dayAdmit:3,
+          ss1:1, ss2:1, ss3:1, ss4:1, ss5:0, ss6:1,
+          ia1:1, ia2:1, ia3:1, ia4:1, ia5:1, ia6:1, ia7:1, ia8:1, ia9:0,
+          pr1:1, pr2:1, pr3:1, pr4:1, pr5:1, pr6:1,
+          sc1:1, sc2:1, sc3:1, sc4:1, sc5:0,
+          ssScore:5, iaScore:8, prScore:6, scScore:4, total:23, severity:'mild',
+          notes:'', by:'Dev', assessedBy:'มารดา', subTotals:{ss:5,ia:8,pr:6,sc:4} },
+      ]);
+      setLoading(false);
+      return;
+    }
 
     // Safety net: abort after 20s so spinner never hangs forever
     const controller = new AbortController();
@@ -207,6 +278,7 @@ function App() {
 
   // ── API helpers (only called when user is set) ────────────────────────────
   const apiPost = (payload) => {
+    if (user?.token === 'dev-bypass') return Promise.resolve({ status: 'ok' });
     return fetch(user?.apiUrl || window.PSS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -222,7 +294,8 @@ function App() {
     const dayAdmit = fam.admitDate
       ? (() => { const [y,m,d] = fam.admitDate.split('-').map(Number); return Math.floor((Date.now() - new Date(y,m-1,d).getTime()) / 86400000) + 1; })()
       : (Number(fam.dayAdmit) || 0);
-    const assId = openFamId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+    const assId = r.assId || (openFamId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7));
+    const isEdit = !!r.assId;
     const ass = {
       assId, famId: openFamId, hospitalCode: user.hospitalCode,
       parentName: fam.parentName || '', bed: fam.bed || '',
@@ -230,14 +303,21 @@ function App() {
       ssScore: r.totals.ss, iaScore: r.totals.ia,
       prScore: r.totals.pr, scScore: r.totals.sc,
       total: r.total, severity: r.sev.key, notes: r.notes || '',
+      assessedBy: r.assessedBy || '',
       ...r.answers,
     };
-    setAssessments(prev => [...prev, {
-      ...ass,
-      subTotals: { ss: r.totals.ss, ia: r.totals.ia, pr: r.totals.pr, sc: r.totals.sc },
-      by: user.name || user.email,
-    }]);
+    setAssessments(prev => {
+      const next = {
+        ...ass,
+        subTotals: { ss: r.totals.ss, ia: r.totals.ia, pr: r.totals.pr, sc: r.totals.sc },
+        by: user.name || user.email,
+      };
+      const idx = prev.findIndex(a => a.assId === assId);
+      if (idx >= 0) { const copy = [...prev]; copy[idx] = { ...prev[idx], ...next }; return copy; }
+      return [...prev, next];
+    });
     setResultData(r);
+    setEditAssId(null);
     setRoute('result');
     apiPost({ action: 'saveAssessment', ass })
       .then(d => {
@@ -248,6 +328,30 @@ function App() {
         const pending = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
         localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify([...pending, ass]));
         window.showToast?.('บันทึกไว้ชั่วคราว — จะซิงค์เมื่อออนไลน์', 'info', 5000);
+      });
+  };
+
+  const handleChangeBed = (famId, newBed) => {
+    if (!newBed) return;
+    const fam = families.find(f => f.famId === famId);
+    if (!fam) return;
+    if (String(fam.bed) === String(newBed)) return;
+    const stamp = new Date().toISOString().slice(0, 10);
+    const history = Array.isArray(fam.bedHistory) ? fam.bedHistory : [];
+    const updated = {
+      ...fam,
+      bed: newBed,
+      bedHistory: [...history, { bed: newBed, from: stamp, fromBed: fam.bed }],
+    };
+    setFamilies(prev => prev.map(f => f.famId === famId ? updated : f));
+    apiPost({ action: 'saveFamily', fam: updated })
+      .then(d => {
+        if (d?.status !== 'ok') throw new Error(d?.status);
+        window.showToast?.(`ย้ายไปเตียง ${newBed} ✓`, 'success');
+      })
+      .catch(err => {
+        console.warn('saveFamily bed-change:', err);
+        window.showToast?.('บันทึกไม่สำเร็จ กรุณาลองใหม่', 'error');
       });
   };
 
@@ -313,25 +417,55 @@ function App() {
       });
   };
 
+  // Auto-login when running in dev preview — surfaces the inner app without going through Google
+  aE(() => {
+    if (user || !window.PSS_DEV_MODE || !window.PSS_DEV_AUTO_LOGIN) return;
+    const code = window.PSS_DEV_AUTO_LOGIN;
+    setUser({
+      token: 'dev-bypass',
+      email: 'dev@test.local',
+      name: 'Dev User',
+      role: 'admin',
+      hospitalCode: code,
+      hospitalName: code === 'SPR' ? 'โรงพยาบาลสวรรค์ประชารักษ์' : 'โรงพยาบาลจุฬาลงกรณ์',
+    });
+  }, [user]);
+
+  if (restoring) return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 18,
+      background: 'var(--paper)', padding: 24,
+    }}>
+      <img src="assets/pss-nicu-logo.png" alt="" width="64" height="64" style={{ objectFit: 'contain', opacity: 0.85 }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--ink-3)', fontSize: 13 }}>
+        <div style={{ width: 14, height: 14, border: '1.5px solid var(--line)', borderTopColor: 'var(--terracotta)', borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
+        กำลังเข้าสู่ระบบ…
+      </div>
+    </div>
+  );
+
   if (!user) return <LoginScreen onLogin={setUser} lang={lang} />;
 
   if (loading) {
+    const isMob = window.innerWidth <= 640;
     return (
       <div style={{ background: 'var(--paper)', minHeight: '100vh' }}>
         {/* Skeleton TopNav */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobLoad ? 8 : 16, padding: isMobLoad ? '10px 14px' : '14px 28px', background: 'var(--card)', borderBottom: '1px solid var(--line)' }}>
-          <SkeletonBlock w={isMobLoad ? 28 : 130} h={32} r={8} />
-          {(isMobLoad ? [40,40,40,40] : [90,100,80,90]).map((w, i) => <SkeletonBlock key={i} w={w} h={32} r={99} />)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMob ? 8 : 16, padding: isMob ? '10px 14px' : '14px 28px', background: 'var(--card)', borderBottom: '1px solid var(--line)' }}>
+          <SkeletonBlock w={isMob ? 28 : 130} h={32} r={8} />
+          {(isMob ? [40,40,40,40] : [90,100,80,90]).map((w, i) => <SkeletonBlock key={i} w={w} h={32} r={99} />)}
           <div style={{ flex: 1 }} />
-          <SkeletonBlock w={isMobLoad ? 32 : 110} h={32} r={99} />
-          <SkeletonBlock w={isMobLoad ? 30 : 36} h={isMobLoad ? 30 : 36} r={99} />
-          {!isMobLoad && <SkeletonBlock w={80} h={32} r={99} />}
+          <SkeletonBlock w={isMob ? 32 : 110} h={32} r={99} />
+          <SkeletonBlock w={isMob ? 30 : 36} h={isMob ? 30 : 36} r={99} />
+          {!isMob && <SkeletonBlock w={80} h={32} r={99} />}
         </div>
         {/* Skeleton Dashboard */}
-        <div style={{ padding: isMobLoad ? '20px 16px' : '32px 28px', maxWidth: 1400, margin: '0 auto' }}>
-          <SkeletonBlock w={isMobLoad ? '70%' : '36%'} h={isMobLoad ? 32 : 44} r={8} />
+        <div style={{ padding: isMob ? '20px 16px' : '32px 28px', maxWidth: 1400, margin: '0 auto' }}>
+          <SkeletonBlock w={isMob ? '70%' : '36%'} h={isMob ? 32 : 44} r={8} />
           <div style={{ marginTop: 10, marginBottom: 28 }}><SkeletonBlock w="22%" h={16} r={6} /></div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobLoad ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMob ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
             {[0,1,2,3].map(i => (
               <div key={i} className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <SkeletonBlock w="55%" h={11} r={4} />
@@ -340,13 +474,13 @@ function App() {
               </div>
             ))}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobLoad ? '1fr' : '1.4fr 1fr', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMob ? '1fr' : '1.4fr 1fr', gap: 20 }}>
             <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SkeletonBlock w="50%" h={14} r={5} />
               <SkeletonBlock w="65%" h={22} r={6} />
               {[0,1,2,3,4].map(i => <SkeletonBlock key={i} h={44} r={12} />)}
             </div>
-            {!isMobLoad && <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {!isMob && <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SkeletonBlock w="50%" h={14} r={5} />
               <SkeletonBlock w="65%" h={22} r={6} />
               {[0,1,2,3].map(i => <SkeletonBlock key={i} h={36} r={8} />)}
@@ -374,10 +508,11 @@ function App() {
     </div>
   );
 
-  const goRoute = (r) => { setRoute(r); setOpenFamId(null); };
+  const goRoute = (r) => { setRoute(r); setOpenFamId(null); setEditAssId(null); };
   const openFamily = (id) => {
     setOpenFamId(id);
     setRoute('familyDetail');
+    if (user?.token === 'dev-bypass') return; // skip lazy-loads in dev mode
     const lazyPost = (payload) => fetch(user?.apiUrl || window.PSS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -417,7 +552,8 @@ function App() {
         }
       }).catch(() => {});
   };
-  const newAss = (id) => { setOpenFamId(id); setRoute('assessment'); };
+  const newAss  = (id) => { setOpenFamId(id); setEditAssId(null); setRoute('assessment'); };
+  const editAss = (famId, assId) => { setOpenFamId(famId); setEditAssId(assId); setRoute('assessment'); };
 
   const handleLogout = () => {
     sessionStorage.removeItem('pss_token');
@@ -464,6 +600,8 @@ function App() {
             lang={lang} thresholds={thresholds} showSubscales={showSubscales}
             onBack={() => setRoute('families')}
             onNewAssessment={() => newAss(openFamId)}
+            onEditAssessment={(assId) => editAss(openFamId, assId)}
+            onChangeBed={(newBed) => handleChangeBed(openFamId, newBed)}
             onOpenAlert={() => setRoute('alerts')}
             onSaveNote={(text) => handleSaveNote(openFamId, text)}
             onSaveIntervention={(kind, note) => handleSaveIntervention(openFamId, kind, note)}
@@ -473,7 +611,8 @@ function App() {
         {route === 'assessment' && openFamId && (
           <AssessmentScreen famId={openFamId} families={families} lang={lang} thresholds={thresholds}
             user={user}
-            onBack={() => setRoute('familyDetail')}
+            editAssessment={editAssId ? assessments.find(a => a.assId === editAssId) : null}
+            onBack={() => { setEditAssId(null); setRoute('familyDetail'); }}
             onSubmit={handleAssessmentSubmit} />
         )}
         {route === 'result' && resultData && (
@@ -484,7 +623,7 @@ function App() {
         )}
         {route === 'alerts' && (
           <AlertsScreen families={families} assessments={assessments} lang={lang} thresholds={thresholds}
-            onOpenFamily={openFamily} />
+            onOpenFamily={openFamily} onSaveNote={handleSaveNote} />
         )}
         {route === 'analytics' && (
           <AnalyticsScreen families={families} assessments={assessments} lang={lang} thresholds={thresholds} />
@@ -544,6 +683,35 @@ function App() {
         </button>
       )}
 
+      {window.PSS_DEV_MODE && <TweaksPanel title="Tweaks">
+        <TweakSection label="Display" />
+        <TweakRadio label="Language" value={tweaks.lang}
+          options={[{ value: 'en', label: 'EN' }, { value: 'th', label: 'ไทย' }]}
+          onChange={v => setTweak('lang', v)} />
+        <TweakRadio label="Density" value={tweaks.density}
+          options={[{ value: 'comfortable', label: 'Comfy' }, { value: 'compact', label: 'Compact' }]}
+          onChange={v => setTweak('density', v)} />
+        <TweakSelect label="Font pair" value={tweaks.fontPair}
+          options={[
+            { value: 'newsreader-manrope', label: 'Newsreader · Manrope' },
+            { value: 'sarabun-only', label: 'Sarabun (Thai)' },
+            { value: 'system', label: 'System default' },
+          ]}
+          onChange={v => setTweak('fontPair', v)} />
+        <TweakColor label="Brand palette" value={tweaks.palette}
+          options={['terracotta', 'sage', 'plum', 'indigo']}
+          onChange={v => setTweak('palette', v)} />
+        <TweakToggle label="Show subscales" value={tweaks.showSubscales}
+          onChange={v => setTweak('showSubscales', v)} />
+
+        <TweakSection label="Risk thresholds (raw /104)" />
+        <TweakSlider label="Mild ≥" value={tweaks.thMild} min={10} max={40} step={1}
+          onChange={v => setTweak('thMild', v)} />
+        <TweakSlider label="Moderate ≥" value={tweaks.thMod} min={35} max={70} step={1}
+          onChange={v => setTweak('thMod', v)} />
+        <TweakSlider label="Extreme ≥" value={tweaks.thHigh} min={60} max={100} step={1}
+          onChange={v => setTweak('thHigh', v)} />
+      </TweaksPanel>}
     </div>
   );
 }

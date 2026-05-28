@@ -46,18 +46,11 @@ function LoginScreen({ onLogin, lang }) {
               body: JSON.stringify({ action: 'login', token: resp.credential })
             });
             const data = await res.json();
-            if (data.status === 'ok') {
-              sessionStorage.setItem('pss_token', resp.credential);
-              onLogin({ ...data, token: resp.credential });
-              return;
-            }
-            if (data.status === 'suspended')
-              throw new Error('บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
-            if (data.status === 'config_error')
-              throw new Error('config_error: ' + (data.message || '(no detail)'));
-            throw new Error('ไม่พบบัญชีนี้ในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มสิทธิ์');
+            if (data.status !== 'ok') throw new Error('ไม่พบบัญชีนี้ในระบบ หรือบัญชีถูกระงับ');
+            sessionStorage.setItem('pss_token', resp.credential);
+            onLogin({ ...data, token: resp.credential });
           } catch (err) {
-            setError(err.message || 'เชื่อมต่อระบบไม่ได้ กรุณาลองอีกครั้ง');
+            setError('ไม่พบบัญชีนี้ในระบบ หรือเกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
             setLoading(false);
             setClicked(false);
           }
@@ -240,6 +233,38 @@ function LoginScreen({ onLogin, lang }) {
           </div>
         )}
 
+        {/* ── Dev bypass — only visible when PSS_DEV_MODE = true ───────────── */}
+        {window.PSS_DEV_MODE && (
+          <div style={{
+            marginTop: 28, padding: '14px 16px',
+            border: '1.5px dashed rgba(79,93,138,0.35)',
+            borderRadius: 12, background: 'rgba(79,93,138,0.04)',
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+              🔧 Dev bypass
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { code: 'KCMH', name: 'โรงพยาบาลจุฬาลงกรณ์' },
+                { code: 'SPR',  name: 'โรงพยาบาลสวรรค์ประชารักษ์' },
+              ].map(({ code, name }) => (
+                <button key={code}
+                  className="btn btn-ghost"
+                  style={{ flex: 1, fontSize: 12, padding: '8px 10px' }}
+                  onClick={() => onLogin({
+                    token: 'dev-bypass',
+                    email: 'dev@test.local',
+                    name: 'Dev User',
+                    role: 'admin',
+                    hospitalCode: code,
+                    hospitalName: name,
+                  })}>
+                  {code}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer — institutional trust signals */}
@@ -376,9 +401,9 @@ function GlobalSearch({ families, assessments, thresholds, onOpen, onClose }) {
                 <Avatar initials={bedAbbr(fam.bed)} size={36} _fontSize={bedFs(fam.bed, 36)}
                   palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : 'sage'} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>เตียง {fam.bed}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{famLabel(fam)} <span style={{ fontSize: 11, color: 'var(--ink-4)', fontWeight: 500 }}>· เตียง {fam.bed}</span></div>
                   <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                    HN {fam.infantId} · {fam.relation}
+                    HN {fam.infantId}
                     {days != null && <span style={{ marginLeft: 6, fontFamily: 'var(--mono)', color: 'var(--ink-4)', fontSize: 11 }}>D {days}</span>}
                   </div>
                 </div>
@@ -416,9 +441,12 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
     return { fam: f, last, trend, isRising, lastInterv };
   }), [families, assessments, interventions]);
 
-  const highRisk = enriched.filter((e) => e.last && severity(e.last.total, thresholds).key === 'high' || severity(e.last?.total, thresholds).key === 'extreme');
+  const highRisk = enriched.filter((e) => {
+    if (!e.last) return false;
+    const k = severity(e.last.total, thresholds).key;
+    return k === 'high' || k === 'extreme';
+  });
   const rising = enriched.filter((e) => e.isRising && e.last);
-  const newToday = enriched.filter((e) => e.fam.dayAdmit <= 2);
   const avgScore = uM(() => {
     const all = enriched.filter((e) => e.last).map((e) => e.last.total);
     return all.length ? Math.round(all.reduce((a, b) => a + b, 0) / all.length) : 0;
@@ -540,10 +568,11 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
                   palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : 'sage'} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: isMobile ? 15 : 13, fontWeight: 700 }}>เตียง {e.fam.bed}</span>
-                      {(() => { const d = daysIn(e.fam.admitDate, e.fam.dayAdmit); return d ? <span style={{ fontSize: 11, color: 'var(--ink-4)', fontFamily: 'var(--mono)', background: 'var(--paper-3)', padding: '1px 6px', borderRadius: 99 }}>D {d}</span> : null; })()}
+                      <span style={{ fontSize: isMobile ? 15 : 14, fontWeight: 700 }}>{famLabel(e.fam)}</span>
+                      <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>เตียง {e.fam.bed}</span>
+                      {(() => { const d = daysIn(e.fam.admitDate, e.fam.dayAdmit); return d ? <span style={{ fontSize: 11, color: 'var(--ink-4)', fontFamily: 'var(--mono)', background: 'var(--paper-3)', padding: '1px 6px', borderRadius: 99 }}>DOL {d}</span> : null; })()}
                     </div>
-                    <div style={{ fontSize: isMobile ? 13 : 11, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.fam.relation}{e.fam.dx ? ` · ${e.fam.dx}` : ''}</div>
+                    <div style={{ fontSize: isMobile ? 13 : 11, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>HN {e.fam.infantId}{e.fam.dx ? ` · ${e.fam.dx}` : ''}</div>
                   </div>
                   {!isMobile && <MiniTrend values={e.trend} color={sev.color} width={60} height={22} />}
                   <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-end' : 'center', gap: isMobile ? 4 : 10 }}>
@@ -590,7 +619,7 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
                   <Avatar initials={bedAbbr(e.fam.bed)} size={36} _fontSize={bedFs(e.fam.bed, 36)}
                   palette={sev.key === 'extreme' ? 'plum' : 'terracotta'} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>เตียง {e.fam.bed}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{famLabel(e.fam)} <span style={{ fontSize: 11, color: 'var(--ink-4)', fontWeight: 500 }}>· เตียง {e.fam.bed}</span></div>
                     <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
                       {e.fam.admitDate
                         ? new Date(e.fam.admitDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })
@@ -610,7 +639,7 @@ function DashboardScreen({ user, families, assessments, interventions, lang, onO
 }
 
 // ===== ADD FAMILY FORM ============================================
-const RELATION_OPTIONS = ['มารดา', 'บิดา', 'ผู้ปกครองอื่น'];
+const RELATION_OPTIONS = ['มารดา', 'บิดา', 'ผู้ปกครองอื่น']; // ใช้ในหน้าประเมินเพื่อเลือกผู้รับการประเมิน
 const KCMH_BEDS = [
   '1','2','3','4','5','6','7','8','9','10','11','12',
   'iso 1-1','iso 1-2','iso 2-1','iso 2-2','iso 3-1','iso 3-2','iso 3-3','iso 3-4'
@@ -619,17 +648,33 @@ const KCMH_BEDS = [
 const BEDS = window.PSS_BEDS || KCMH_BEDS;
 
 function AddFamilyForm({ onSave, onCancel, lang, isMobile }) {
-  const empty = { bed: BEDS[0], infantId:'', ga:'', bw:'', admitDate:'', dx:'', relation: RELATION_OPTIONS[0] };
+  const empty = { bed: BEDS[0], name: '', initials: '', infantId:'', ga:'', bw:'', admitDate:'', dx:'' };
   const [f, setF] = uS(empty);
+  const [initialsTouched, setInitialsTouched] = uS(false);
   const [saving, setSaving] = uS(false);
 
   const set = (k, v) => setF(prev => ({ ...prev, [k]: v }));
+  const setName = (v) => {
+    setF(prev => {
+      const next = { ...prev, name: v };
+      if (!initialsTouched) next.initials = deriveInitials(v);
+      return next;
+    });
+  };
+  const setInitials = (v) => { setInitialsTouched(true); set('initials', v); };
   const valid = !!f.bed;
 
   const submit = () => {
     if (!valid) return;
     setSaving(true);
-    onSave({ ...f, ga: Number(f.ga) || '', bw: Number(f.bw) || '', famId: 'F' + Date.now(), active: true });
+    onSave({
+      ...f,
+      ga: Number(f.ga) || '',
+      bw: Number(f.bw) || '',
+      famId: 'F' + Date.now(),
+      bedHistory: f.bed ? [{ bed: f.bed, from: new Date().toISOString().slice(0, 10) }] : [],
+      active: true,
+    });
   };
 
   const inputStyle = { width: '100%', padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 13, background: 'var(--card)', fontFamily: 'var(--sans)' };
@@ -638,6 +683,20 @@ function AddFamilyForm({ onSave, onCancel, lang, isMobile }) {
   return (
     <div className={`card scale-in${isMobile ? ' bottom-sheet' : ''}`} style={{ padding: 28, marginBottom: isMobile ? 0 : 24 }}>
       <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: 20 }}>เพิ่มครอบครัวใหม่</div>
+
+      {/* Name + initials — primary identifier across bed changes */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div>
+          <label style={labelStyle}>ชื่อ-สกุล ผู้ปกครอง *</label>
+          <input value={f.name} onChange={e => setName(e.target.value)} placeholder="เช่น สมชาย แซ่หวัง" style={inputStyle} autoFocus />
+        </div>
+        <div>
+          <label style={labelStyle}>ชื่อย่อ</label>
+          <input value={f.initials} onChange={e => setInitials(e.target.value)} maxLength={4}
+            placeholder={f.name ? deriveInitials(f.name) : 'สซ'}
+            style={{ ...inputStyle, fontFamily: 'var(--mono)', textAlign: 'center', letterSpacing: '0.05em' }} />
+        </div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 16 }}>
         <div>
@@ -651,12 +710,6 @@ function AddFamilyForm({ onSave, onCancel, lang, isMobile }) {
           <input value={f.infantId} onChange={e => set('infantId', e.target.value)} placeholder="เช่น 1234/69" style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>ความสัมพันธ์</label>
-          <select value={f.relation} onChange={e => set('relation', e.target.value)} style={inputStyle}>
-            {RELATION_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
-        <div>
           <label style={labelStyle}>GA (สัปดาห์)</label>
           <input type="number" value={f.ga} onChange={e => set('ga', e.target.value)} placeholder="28" style={inputStyle} />
         </div>
@@ -665,18 +718,13 @@ function AddFamilyForm({ onSave, onCancel, lang, isMobile }) {
           <input type="number" value={f.bw} onChange={e => set('bw', e.target.value)} placeholder="1200" style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>วันที่รับไว้</label>
+          <label style={labelStyle}>วันที่ Admit</label>
           <input type="date" value={f.admitDate} onChange={e => set('admitDate', e.target.value)} style={inputStyle} />
         </div>
       </div>
       <div style={{ marginBottom: 20 }}>
         <label style={labelStyle}>การวินิจฉัย</label>
         <input value={f.dx} onChange={e => set('dx', e.target.value)} placeholder="เช่น RDS, ventilator support" style={inputStyle} />
-      </div>
-
-      {/* PDPA notice — Section 23/26 */}
-      <div style={{ fontSize: 10, color: 'var(--ink-4)', lineHeight: 1.6, marginBottom: 14, padding: '8px 10px', background: 'var(--paper-2)', borderRadius: 6 }}>
-        ข้อมูลที่บันทึกใช้เพื่อการดูแลผู้ป่วยและการวิจัยทางคลินิก ภายใต้ พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 และโครงการที่ได้รับอนุมัติจากคณะกรรมการจริยธรรมวิจัย
       </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -707,10 +755,15 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
     return { fam: f, last, trend, isRising };
   }), [families, assessments]);
 
+  const isNewFamily = (e) => {
+    const d = daysIn(e.fam.admitDate, e.fam.dayAdmit);
+    return d != null && d <= 3;
+  };
+
   const filtered = enriched.filter((e) => {
     if (q) {
       const s = q.toLowerCase().trim();
-      const hit = (e.fam.bed + ' ' + e.fam.infantId).toLowerCase().includes(s);
+      const hit = (String(e.fam.bed) + ' ' + String(e.fam.infantId || '')).toLowerCase().includes(s);
       if (!hit) return false;
     }
     if (filter === 'high') {
@@ -718,14 +771,18 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
       return k === 'high' || k === 'extreme';
     }
     if (filter === 'rising') return e.isRising;
-    if (filter === 'new') return e.fam.dayAdmit <= 3;
+    if (filter === 'new') return isNewFamily(e);
     return true;
   });
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'risk') return (b.last?.total || 0) - (a.last?.total || 0);
-    if (sortBy === 'bed') return a.fam.bed.localeCompare(b.fam.bed);
-    if (sortBy === 'day') return b.fam.dayAdmit - a.fam.dayAdmit;
+    if (sortBy === 'bed') return String(a.fam.bed).localeCompare(String(b.fam.bed), undefined, { numeric: true });
+    if (sortBy === 'day') {
+      const da = daysIn(a.fam.admitDate, a.fam.dayAdmit) || 0;
+      const db = daysIn(b.fam.admitDate, b.fam.dayAdmit) || 0;
+      return db - da;
+    }
     return 0;
   });
 
@@ -733,7 +790,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
   { k: 'all',    label: 'ทั้งหมด',          count: enriched.length },
   { k: 'high',   label: 'ความเสี่ยงสูง',     count: enriched.filter((e) => { const k = severity(e.last?.total, thresholds).key; return k === 'high' || k === 'extreme'; }).length },
   { k: 'rising', label: 'แนวโน้มเพิ่ม',      count: enriched.filter((e) => e.isRising).length },
-  { k: 'new',    label: 'รายใหม่ (≤3 วัน)',  count: enriched.filter((e) => e.fam.dayAdmit <= 3).length }];
+  { k: 'new',    label: 'รายใหม่ (≤3 วัน)',  count: enriched.filter(isNewFamily).length }];
 
   return (
     <div style={{ padding: isMobile ? '20px 16px 130px' : '32px 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
@@ -795,7 +852,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
           style={{ height: '100%', padding: '0 10px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--card)', fontSize: 13, fontWeight: 600, boxSizing: 'border-box', flexShrink: 0 }}>
             <option value="risk">ความเสี่ยง</option>
             <option value="bed">เตียง</option>
-            <option value="day">วันที่รับไว้</option>
+            <option value="day">DOL / Admit</option>
           </select>
         </div>
       </div>
@@ -803,12 +860,12 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
       {!isMobile && <div style={{
         padding: '0 20px 8px', fontSize: 10, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600,
         display: 'grid', gap: density === 'compact' ? 12 : 18,
-        gridTemplateColumns: 'auto 1.6fr 1fr 1.2fr 1.5fr auto',
+        gridTemplateColumns: 'auto 2.4fr 0.8fr 1fr 1.5fr auto',
         alignItems: 'center'
       }}>
         <span></span>
-        <span>{t('parent', lang)}</span>
-        <span>{t('day', lang)}</span>
+        <span>ครอบครัว</span>
+        <span>DOL</span>
         <span>{t('last', lang)} {t('score', lang)}</span>
         <span>{t('trend', lang)} · {t('risk', lang)}</span>
         <span></span>
@@ -837,7 +894,7 @@ function FamilyListScreen({ families, assessments, lang, density, thresholds, on
 }
 
 // ===== FAMILY DETAIL ==============================================
-function FamilyDetailScreen({ famId, families, assessments, interventions, notes = [], lang, thresholds, showSubscales, onBack, onNewAssessment, onOpenAlert, onSaveNote, onSaveIntervention, carePlan, onUpdateCarePlan }) {
+function FamilyDetailScreen({ famId, families, assessments, interventions, notes = [], lang, thresholds, showSubscales, onBack, onNewAssessment, onEditAssessment, onChangeBed, onOpenAlert, onSaveNote, onSaveIntervention, carePlan, onUpdateCarePlan }) {
   const isMobile = useIsMobile();
   const fam = families.find((f) => f.famId === famId);
   const fa = assessments.filter((a) => a.famId === famId).sort((a, b) => a.date.localeCompare(b.date));
@@ -847,6 +904,8 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, notes
 
   const [tab, setTab] = uS('overview');
   const [showNote, setShowNote] = uS(false);
+  const [showBedChange, setShowBedChange] = uS(false);
+  const [pendingBed, setPendingBed] = uS(fam?.bed || '');
   const [noteText, setNoteText] = uS('');
   const [savedNote, setSavedNote] = uS('');
   const saveNote = () => {
@@ -873,22 +932,24 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, notes
           <Avatar initials={bedAbbr(fam.bed)} size={68} _fontSize={bedFs(fam.bed, 68)}
           palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : 'sage'} />
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <span className="pill" style={{ fontFamily: 'var(--mono)' }}>{fam.bed}</span>
-              <span className="pill">HN {fam.infantId}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+              <span className="pill" style={{ fontFamily: 'var(--mono)' }}>HN {fam.infantId}</span>
               <SeverityBadge severity={sev} lang={lang} />
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
-              <h1 className="serif" style={{ fontSize: isMobile ? 24 : 32 }}>เตียง {fam.bed}</h1>
-              {(() => { const d = daysIn(fam.admitDate, fam.dayAdmit); return d ? <span style={{ fontSize: 14, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>D {d}</span> : null; })()}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
+              <h1 className="serif" style={{ fontSize: isMobile ? 26 : 34, lineHeight: 1.1 }}>{famLabel(fam)}</h1>
+              <span style={{ fontSize: 14, color: 'var(--ink-3)' }}>เตียง {fam.bed}</span>
+              {(() => { const d = daysIn(fam.admitDate, fam.dayAdmit); return d ? <span style={{ fontSize: 13, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>DOL {d}</span> : null; })()}
             </div>
-            <div style={{ fontSize: 14, color: 'var(--ink-3)', marginBottom: 4 }}>
-              {fam.relation} · GA {fam.ga} wk · BW {fam.bw} g
-              {fam.admitDate && <span style={{ marginLeft: 8, color: 'var(--ink-4)' }}>· รับ {fmtDate(fam.admitDate)}</span>}
+            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: fam.dx ? 4 : 0 }}>
+              GA {fam.ga} wk · BW {fam.bw} g
+              {fam.admitDate && <span style={{ marginLeft: 6, color: 'var(--ink-4)' }}>· Admit {fmtDate(fam.admitDate)}</span>}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
-              <Icon name="baby" size={12} /> {fam.dx}
-            </div>
+            {fam.dx && (
+              <div style={{ fontSize: 13, color: 'var(--ink-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="baby" size={12} /> {fam.dx}
+              </div>
+            )}
           </div>
           <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
             <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>คะแนนล่าสุด</div>
@@ -911,6 +972,14 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, notes
               <Icon name="bell" size={14} /> ดูการแจ้งเตือน
             </button>
           }
+          {onChangeBed && (
+            <button className="btn btn-ghost" onClick={() => { setPendingBed(fam.bed); setShowBedChange(true); }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 8h18M3 8l3-4h12l3 4M3 8v10a1 1 0 001 1h2a1 1 0 001-1v-2h10v2a1 1 0 001 1h2a1 1 0 001-1V8" />
+              </svg>
+              ย้ายเตียง
+            </button>
+          )}
           <button className="btn btn-ghost" onClick={() => setShowNote(v => !v)}
             style={{ color: showNote ? 'var(--terracotta)' : undefined, borderColor: showNote ? 'var(--terracotta)' : undefined }}>
             <Icon name="message" size={14} /> เพิ่มบันทึก
@@ -921,7 +990,7 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, notes
           <div style={{ marginTop: 16, position: 'relative' }}>
             <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-                บันทึก — เตียง {fam.bed} · HN {fam.infantId}
+                บันทึก — {famLabel(fam)} · เตียง {fam.bed} · HN {fam.infantId}
               </div>
               <textarea value={noteText} onChange={ev => setNoteText(ev.target.value)}
                 placeholder="สังเกตการณ์ การช่วยเหลือ การติดตาม…"
@@ -976,8 +1045,49 @@ function FamilyDetailScreen({ famId, families, assessments, interventions, notes
       </div>
 
       {tab === 'overview' && <FamilyOverviewTab fa={fa} sev={sev} thresholds={thresholds} lang={lang} showSubscales={showSubscales} />}
-      {tab === 'history' && <FamilyHistoryTab fa={fa} interv={interv} thresholds={thresholds} lang={lang} fam={fam} />}
+      {tab === 'history' && <FamilyHistoryTab fa={fa} interv={interv} thresholds={thresholds} lang={lang} fam={fam} onEditAssessment={onEditAssessment} />}
       {tab === 'care' && <CareAndLogTab sev={sev} lang={lang} interv={interv} onSaveIntervention={onSaveIntervention} carePlan={carePlan || {}} onUpdateCarePlan={onUpdateCarePlan} />}
+
+      {/* Bed-change modal */}
+      {showBedChange && (
+        <>
+          <div onClick={() => setShowBedChange(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(42,34,26,0.45)', backdropFilter: 'blur(4px)', zIndex: 800 }} />
+          <div className={`card scale-in${isMobile ? ' bottom-sheet' : ''}`} style={isMobile ? { zIndex: 801 } : {
+            position: 'fixed', zIndex: 801,
+            top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: 'min(440px, calc(100% - 32px))', padding: 24,
+          }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>ย้ายเตียง</div>
+            <h3 className="serif" style={{ marginBottom: 4 }}>{famLabel(fam)}</h3>
+            <p style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 20 }}>
+              เตียงปัจจุบัน: <strong style={{ color: 'var(--ink)' }}>{fam.bed}</strong> — เลือกเตียงใหม่ ข้อมูลและประวัติยังตามคนไข้ไป
+            </p>
+            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ink-3)', display: 'block', marginBottom: 6 }}>เตียงใหม่</label>
+            <select value={pendingBed} onChange={(e) => setPendingBed(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 14, background: 'var(--card)', fontFamily: 'var(--sans)', marginBottom: 20 }}>
+              {(window.PSS_BEDS || ['1','2','3','4','5','6','7','8','9','10','11','12','iso 1-1','iso 1-2','iso 2-1','iso 2-2','iso 3-1','iso 3-2','iso 3-3','iso 3-4']).map(b => (
+                <option key={b} value={b}>เตียง {b}{String(b) === String(fam.bed) ? ' (ปัจจุบัน)' : ''}</option>
+              ))}
+            </select>
+            {Array.isArray(fam.bedHistory) && fam.bedHistory.length > 0 && (
+              <div style={{ padding: 12, background: 'var(--paper)', borderRadius: 10, fontSize: 12, color: 'var(--ink-3)', marginBottom: 20, lineHeight: 1.7 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>ประวัติเตียง</div>
+                {fam.bedHistory.map((h, i) => (
+                  <div key={i}>{h.fromBed ? `${h.fromBed} → ${h.bed}` : h.bed} · <span style={{ color: 'var(--ink-4)' }}>{fmtDate(h.from)}</span></div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setShowBedChange(false)}>ยกเลิก</button>
+              <button className="btn btn-primary" disabled={String(pendingBed) === String(fam.bed)}
+                style={{ opacity: String(pendingBed) === String(fam.bed) ? 0.5 : 1 }}
+                onClick={() => { onChangeBed(pendingBed); setShowBedChange(false); }}>
+                <Icon name="check" size={14} /> ยืนยันย้ายไปเตียง {pendingBed}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>);
 
 }
@@ -1029,7 +1139,7 @@ function FamilyOverviewTab({ fa, sev, thresholds, lang, showSubscales }) {
 
 }
 
-function FamilyHistoryTab({ fa, interv, thresholds, lang, fam }) {
+function FamilyHistoryTab({ fa, interv, thresholds, lang, fam, onEditAssessment }) {
   // Merge assessments + interventions → sort oldest→newest (top=earliest so you see score → intervention → effect)
   const events = [
     ...fa.map(a  => ({ type: 'assessment',   date: a.date,  data: a  })),
@@ -1071,7 +1181,7 @@ function FamilyHistoryTab({ fa, interv, thresholds, lang, fam }) {
               {/* Date column */}
               <div style={{ textAlign: 'right', paddingTop: 14, paddingRight: 4 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', lineHeight: 1.3 }}>{fmtDate(a.date)}</div>
-                {d && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', marginTop: 2 }}>D {d}</div>}
+                {d && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', marginTop: 2 }}>DOL {d}</div>}
               </div>
 
               {/* Timeline spine */}
@@ -1082,8 +1192,29 @@ function FamilyHistoryTab({ fa, interv, thresholds, lang, fam }) {
 
               {/* Assessment card */}
               <div style={{ padding: '12px 16px 16px', marginBottom: isLast ? 0 : 8, marginLeft: 4, background: 'var(--card)', border: '1px solid var(--line-soft)', borderLeft: `3px solid ${sev.color}`, borderRadius: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ink-4)' }}>การประเมิน PSS</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ink-4)' }}>การประเมิน PSS</span>
+                    {a.assessedBy && (
+                      <span className="pill" style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: 'var(--peach-soft)', color: 'var(--terracotta)', border: 'none' }}>{a.assessedBy}</span>
+                    )}
+                  </div>
+                  {onEditAssessment && a.assId && (
+                    <button onClick={() => onEditAssessment(a.assId)}
+                      title="แก้ไขการประเมินนี้"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '4px 10px', borderRadius: 99,
+                        border: '1px solid var(--line)', background: 'var(--card)',
+                        fontSize: 11, fontWeight: 600, color: 'var(--ink-2)',
+                        cursor: 'pointer', touchAction: 'manipulation',
+                      }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                      </svg>
+                      แก้ไข
+                    </button>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                   <span className="serif" style={{ fontSize: 28, color: sev.color, lineHeight: 1 }}>{a.total}</span>
@@ -1120,7 +1251,7 @@ function FamilyHistoryTab({ fa, interv, thresholds, lang, fam }) {
             {/* Date column */}
             <div style={{ textAlign: 'right', paddingTop: 10, paddingRight: 4 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', lineHeight: 1.3 }}>{fmtDate(iv.date)}</div>
-              {d && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', marginTop: 2 }}>D {d}</div>}
+              {d && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', marginTop: 2 }}>DOL {d}</div>}
             </div>
 
             {/* Timeline spine */}
@@ -1412,33 +1543,66 @@ function CareAndLogTab({ sev, lang, interv, onSaveIntervention, carePlan, onUpda
 const DRAFT_KEY = (famId) => 'pss_draft_' + famId;
 const TOTAL_Q = Object.values(PSS_QUESTIONS).reduce((s, qs) => s + qs.length, 0);
 
-function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds, user }) {
+function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds, user, editAssessment }) {
   const isMobile = useIsMobile();
   const fam = families.find((f) => f.famId === famId);
+  const isEdit = !!editAssessment;
   const [step, setStep] = uS(0);
-  const [answers, setAnswers] = uS({});
-  const [notes, setNotes] = uS('');
+  const [answers, setAnswers] = uS(() => {
+    if (!editAssessment) return {};
+    // Pre-fill from existing record
+    const out = {};
+    ['ss','ia','pr','sc'].forEach(s => {
+      (PSS_QUESTIONS[s] || []).forEach(q => {
+        const v = editAssessment[q.id];
+        if (v != null && v !== '') out[q.id] = Number(v);
+      });
+    });
+    return out;
+  });
+  const [notes, setNotes] = uS(editAssessment?.notes || '');
+  const [assessedBy, setAssessedBy] = uS(editAssessment?.assessedBy || RELATION_OPTIONS[0]);
   const [draftSaved, setDraftSaved] = uS(false);
+  const sectionRef = React.useRef(null);
 
-  // Load draft on mount
+  // Reliable scroll-to-section — jumps to the start of the current step's card
+  // (the "ส่วนที่ X จาก 4" header), not all the way to the page top.
+  const scrollToSection = () => {
+    requestAnimationFrame(() => {
+      const el = sectionRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const top = rect.top + window.pageYOffset - 12;
+      try { window.scrollTo({ top, behavior: 'auto' }); } catch { window.scrollTo(0, top); }
+      if (document.scrollingElement) document.scrollingElement.scrollTop = top;
+      document.documentElement.scrollTop = top;
+      document.body.scrollTop = top;
+    });
+  };
+
+  // Load draft on mount — skip if editing an existing assessment
   uE(() => {
+    if (isEdit) return;
     try {
       const saved = JSON.parse(localStorage.getItem(DRAFT_KEY(famId)) || 'null');
       if (saved?.answers && Object.keys(saved.answers).length > 0) {
         setAnswers(saved.answers);
         if (saved.step != null) setStep(saved.step);
+        if (saved.notes) setNotes(saved.notes);
+        if (saved.assessedBy) setAssessedBy(saved.assessedBy);
       }
     } catch {}
-  }, [famId]);
+  }, [famId, isEdit]);
 
-  // Auto-save draft on answers/step change
+  // Auto-save draft on change — skip when editing existing
   uE(() => {
+    if (isEdit) return;
     if (Object.keys(answers).length === 0) return;
-    localStorage.setItem(DRAFT_KEY(famId), JSON.stringify({ answers, step }));
+    localStorage.setItem(DRAFT_KEY(famId), JSON.stringify({ answers, step, notes, assessedBy }));
     setDraftSaved(true);
     const t = setTimeout(() => setDraftSaved(false), 1500);
     return () => clearTimeout(t);
-  }, [answers, step, famId]);
+  }, [answers, step, notes, assessedBy, famId, isEdit]);
 
   const sections = ['ss', 'ia', 'pr', 'sc'];
   const sectionMeta = sections[step];
@@ -1469,17 +1633,44 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
       </button>
 
       {/* Header card */}
-      <div className="card" style={{ padding: 20, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Avatar initials={bedAbbr(fam.bed)} size={48} _fontSize={bedFs(fam.bed, 48)} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>การประเมินใหม่</div>
-          <div className="serif" style={{ fontSize: 22, marginTop: 2 }}>เตียง {fam.bed}</div>
-          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>HN {fam.infantId} · {fam.relation} · GA {fam.ga}wk · BW {fam.bw}g</div>
+      <div className="card" style={{ padding: isMobile ? 16 : 20, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <Avatar initials={bedAbbr(fam.bed)} size={isMobile ? 44 : 48} _fontSize={bedFs(fam.bed, isMobile ? 44 : 48)} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>
+            {isEdit ? 'กำลังแก้ไข' : 'การประเมินใหม่'}
+          </div>
+          <div className="serif" style={{ fontSize: isMobile ? 19 : 22, marginTop: 2 }}>{famLabel(fam)} <span style={{ fontSize: 13, color: 'var(--ink-3)', fontWeight: 500 }}>· เตียง {fam.bed}</span></div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>HN {fam.infantId} · GA {fam.ga}wk · BW {fam.bw}g</div>
         </div>
-        <button className="btn btn-ghost"
-          onClick={() => { localStorage.setItem(DRAFT_KEY(famId), JSON.stringify({ answers, step })); setDraftSaved(true); setTimeout(() => setDraftSaved(false), 1500); }}>
-          <Icon name="note" size={14} /> {draftSaved ? '✓ บันทึกแล้ว' : t('save_draft', lang)}
-        </button>
+        {!isMobile && !isEdit && (
+          <button className="btn btn-ghost"
+            onClick={() => { localStorage.setItem(DRAFT_KEY(famId), JSON.stringify({ answers, step, notes, assessedBy })); setDraftSaved(true); setTimeout(() => setDraftSaved(false), 1500); }}>
+            <Icon name="note" size={14} /> {draftSaved ? '✓ บันทึกแล้ว' : t('save_draft', lang)}
+          </button>
+        )}
+      </div>
+
+      {/* Assessor selector — who is the parent being assessed this session */}
+      <div className="card" style={{ padding: isMobile ? 14 : 18, marginBottom: 20, display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 8 : 14 }}>
+        <div style={{ flexShrink: 0 }}>
+          <div style={{ fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: isMobile ? 2 : 4 }}>ผู้รับการประเมินครั้งนี้</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>แต่ละ session อาจเป็นผู้ปกครองคนละคน</div>
+        </div>
+        <div style={{ flex: 1, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {RELATION_OPTIONS.map(opt => (
+            <button key={opt} onClick={() => setAssessedBy(opt)}
+              style={{
+                flex: isMobile ? 1 : '0 1 auto',
+                minHeight: 40, padding: '10px 14px',
+                borderRadius: 99,
+                border: '1.5px solid ' + (assessedBy === opt ? 'var(--terracotta)' : 'var(--line)'),
+                background: assessedBy === opt ? 'var(--peach-soft)' : 'var(--card)',
+                color: assessedBy === opt ? 'var(--terracotta)' : 'var(--ink-2)',
+                fontSize: 13, fontWeight: assessedBy === opt ? 700 : 500,
+                touchAction: 'manipulation', transition: 'all .12s',
+              }}>{opt}</button>
+          ))}
+        </div>
       </div>
 
       {/* Stepper */}
@@ -1516,6 +1707,9 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
           </div>
         );
       })()}
+
+      {/* Sentinel — scroll target for section changes */}
+      <div ref={sectionRef} aria-hidden="true" />
 
       {!reviewing &&
       <div className="card scale-in" style={{ padding: 28, marginBottom: 20 }} key={step}>
@@ -1607,18 +1801,21 @@ function AssessmentScreen({ famId, families, lang, onBack, onSubmit, thresholds,
       {/* Nav — sticky on mobile */}
       <div className={isMobile ? 'pss-sticky-cta' : undefined}
         style={isMobile ? {} : { display: 'flex', justifyContent: 'space-between' }}>
-        <button className="btn btn-ghost" onClick={() => { step === 0 ? onBack() : setStep(step - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+        <button className="btn btn-ghost" onClick={() => { if (step === 0) { onBack(); return; } setStep(step - 1); scrollToSection(); }}>
           <Icon name="arrow-left" size={14} /> {step === 0 ? t('cancel', lang) : t('prev', lang)}
         </button>
         {!reviewing ?
         <button className="btn btn-primary"
         disabled={!allAnswered(sectionMeta)}
         style={{ opacity: allAnswered(sectionMeta) ? 1 : 0.5, cursor: allAnswered(sectionMeta) ? 'pointer' : 'not-allowed' }}
-        onClick={() => { setStep(step + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+        onClick={() => { setStep(step + 1); scrollToSection(); }}>
             {t('next', lang)} <Icon name="arrow-right" size={14} />
           </button> :
-        <button className="btn btn-primary" onClick={() => { onSubmit({ totals, total, notes, sev, answers, famId }); localStorage.removeItem(DRAFT_KEY(famId)); }}>
-            <Icon name="check" size={14} /> {t('submit', lang)}
+        <button className="btn btn-primary" onClick={() => {
+          onSubmit({ totals, total, notes, sev, answers, famId, assessedBy, assId: editAssessment?.assId });
+          if (!isEdit) localStorage.removeItem(DRAFT_KEY(famId));
+        }}>
+            <Icon name="check" size={14} /> {isEdit ? 'บันทึกการแก้ไข' : t('submit', lang)}
           </button>
         }
       </div>
@@ -1639,7 +1836,7 @@ function ResultScreen({ result, fam, lang, thresholds, onDone, onView }) {
         </div>
         <div style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>บันทึกแล้ว</div>
         <h2 className="serif" style={{ fontSize: 28, marginTop: 8, marginBottom: 6 }}>บันทึกการประเมินแล้ว</h2>
-        <p style={{ color: 'var(--ink-3)' }}>เตียง {fam?.bed} · HN {fam?.infantId}</p>
+        <p style={{ color: 'var(--ink-3)' }}>{famLabel(fam)} · เตียง {fam?.bed} · HN {fam?.infantId}</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 16 : 20, marginTop: 28, padding: isMobile ? 16 : 24, background: 'var(--paper)', borderRadius: 14 }}>
           <div>
@@ -1663,7 +1860,7 @@ function ResultScreen({ result, fam, lang, thresholds, onDone, onView }) {
 }
 
 // ===== ALERTS / TRIAGE ============================================
-function AlertsScreen({ families, assessments, lang, thresholds, onOpenFamily }) {
+function AlertsScreen({ families, assessments, lang, thresholds, onOpenFamily, onSaveNote }) {
   const isMobile = useIsMobile();
   const enriched = uM(() => families.map((f) => {
     const fa = assessments.filter((a) => a.famId === f.famId).sort((a, b) => a.date.localeCompare(b.date));
@@ -1681,20 +1878,34 @@ function AlertsScreen({ families, assessments, lang, thresholds, onOpenFamily })
         eyebrow={`${alerts.length} รายการ`}
         title={<span>การแจ้งเตือน <em style={{ fontStyle: 'italic', color: 'var(--rose)' }}>ที่ต้องดำเนินการ</em></span>} />
 
+      {alerts.length === 0 && (
+        <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--sage-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <Icon name="check" size={32} color="var(--sage)" stroke={2.5} />
+          </div>
+          <h3 className="serif" style={{ marginBottom: 8 }}>ไม่มีการแจ้งเตือนในขณะนี้</h3>
+          <p style={{ fontSize: 13, color: 'var(--ink-3)', maxWidth: 360, margin: '0 auto', lineHeight: 1.6 }}>
+            ครอบครัวทุกรายอยู่ในเกณฑ์ — ไม่มีรายที่มีความเสี่ยงสูง หรือมีแนวโน้มเพิ่มขึ้น
+          </p>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {alerts.map((e) => {
           const reasons = [];
           if (e.sev.key === 'extreme') reasons.push({ label: 'เครียดมากที่สุด', urgent: true });
           else if (e.sev.key === 'high') reasons.push({ label: 'เครียดมาก', urgent: true });
           if (e.isRising) reasons.push({ label: `แนวโน้มเพิ่มขึ้น (+${e.trend[e.trend.length - 1] - e.trend[e.trend.length - 2]})`, urgent: false });
-          return <AlertCard key={e.fam.famId} item={e} reasons={reasons} lang={lang} thresholds={thresholds} onOpen={() => onOpenFamily(e.fam.famId)} />;
+          return <AlertCard key={e.fam.famId} item={e} reasons={reasons} lang={lang} thresholds={thresholds}
+            onOpen={() => onOpenFamily(e.fam.famId)}
+            onSaveNote={onSaveNote ? (text) => onSaveNote(e.fam.famId, text) : null} />;
         })}
       </div>
     </div>);
 
 }
 
-function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
+function AlertCard({ item, reasons, lang, thresholds, onOpen, onSaveNote }) {
   const isMobile = useIsMobile();
   const e = item;
   const sev = e.sev;
@@ -1708,8 +1919,12 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
   const [savedNote, setSavedNote] = uS('');
 
   const saveNote = () => {
-    if (noteText.trim()) { setSavedNote(noteText.trim()); }
+    const text = noteText.trim();
+    if (!text) { setShowNote(false); return; }
+    setSavedNote(text);
     setShowNote(false);
+    setNoteText('');
+    if (onSaveNote) onSaveNote(text);
   };
 
   return (
@@ -1730,9 +1945,9 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
               </span>
             )}
           </div>
-          <h3 className="serif" style={{ fontSize: 24, marginBottom: 4 }}>เตียง {e.fam.bed} · HN {e.fam.infantId}</h3>
+          <h3 className="serif" style={{ fontSize: 22, marginBottom: 4 }}>{famLabel(e.fam)} <span style={{ fontSize: 13, color: 'var(--ink-3)', fontWeight: 500 }}>· เตียง {e.fam.bed} · HN {e.fam.infantId}</span></h3>
           <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
-            {e.fam.relation} · GA {e.fam.ga}wk · BW {e.fam.bw}g · {e.fam.dx}
+            GA {e.fam.ga}wk · BW {e.fam.bw}g{e.fam.dx ? ` · ${e.fam.dx}` : ''}
           </div>
           {e.last?.notes &&
           <div style={{ marginTop: 12, padding: 12, background: 'var(--paper)', borderRadius: 10, fontSize: 13, color: 'var(--ink-2)', fontStyle: 'italic', borderLeft: '2px solid var(--line)' }}>
@@ -1777,7 +1992,6 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
 
       <div style={{ display: 'flex', gap: 8, padding: isMobile ? '12px 16px' : '14px 24px', background: 'var(--paper)', borderTop: '1px solid var(--line-soft)', flexWrap: 'wrap' }}>
         <button className="btn btn-primary" onClick={onOpen}><Icon name="eye" size={14} /> ดูรายละเอียด</button>
-        {!isMobile && <button className="btn btn-ghost"><Icon name="phone" size={14} /> ติดต่อนักสังคมสงเคราะห์</button>}
         <button className="btn btn-ghost" onClick={() => setShowNote(v => !v)}
           style={{ color: showNote ? 'var(--terracotta)' : undefined, borderColor: showNote ? 'var(--terracotta)' : undefined }}>
           <Icon name="message" size={14} /> เพิ่มบันทึก
@@ -1788,7 +2002,7 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen }) {
         <div style={{ padding: '0 24px 20px', background: 'var(--paper)' }}>
           <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-              บันทึก — เตียง {e.fam.bed} · HN {e.fam.infantId}
+              บันทึก — {famLabel(e.fam)} · เตียง {e.fam.bed} · HN {e.fam.infantId}
             </div>
             <textarea value={noteText} onChange={ev => setNoteText(ev.target.value)}
               placeholder="สังเกตการณ์ การช่วยเหลือ การติดตาม…"
@@ -1823,16 +2037,23 @@ function AdminScreen({ families, assessments, lang, thresholds, user }) {
   const [staffLoading, setStaffLoading] = uS(true);
 
   uE(() => {
-    if (!user?.token || !user?.apiUrl) return;
-    fetch(user.apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getStaff', token: user.token })
-    }).then(r => r.json())
+    const apiUrl = user?.apiUrl || window.PSS_API_URL;
+    if (!user?.token || !apiUrl) { setStaffLoading(false); return; }
+    if (user?.token === 'dev-bypass') {
+      setStaff([
+        { email: 'admin@dev.local', name: 'Dev Admin', role: 'admin',  hospitalCode: user.hospitalCode, active: true },
+        { email: 'nurse@dev.local', name: 'Dev Nurse', role: 'nurse',  hospitalCode: user.hospitalCode, active: true },
+      ]);
+      setStaffLoading(false);
+      return;
+    }
+    fetch(`${apiUrl}?action=getStaff&token=${encodeURIComponent(user.token)}`)
+      .then(r => r.json())
       .then(d => { if (d.status === 'ok') setStaff(d.staff); })
       .catch(() => {})
       .finally(() => setStaffLoading(false));
   }, [user]);
+
   return (
     <div style={{ padding: isMobile ? '20px 16px 130px' : '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
       <SectionHeading eyebrow="การตั้งค่า" title="ผู้ดูแลระบบ" />
@@ -1840,8 +2061,7 @@ function AdminScreen({ families, assessments, lang, thresholds, user }) {
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {[
         { k: 'users',      label: 'ผู้ใช้งาน' },
-        { k: 'thresholds', label: 'ค่าเกณฑ์' },
-        { k: 'export',     label: 'ส่งออกข้อมูล' }].
+        { k: 'thresholds', label: 'ค่าเกณฑ์' }].
         map((tb) =>
         <button key={tb.k} onClick={() => setTab(tb.k)}
         style={{
@@ -1896,8 +2116,13 @@ function AdminScreen({ families, assessments, lang, thresholds, user }) {
             </tbody>
           </table>
         </div>
-          <div style={{ padding: 16, borderTop: '1px solid var(--line)' }}>
-            <button className="btn btn-primary"><Icon name="plus" size={14} /> เพิ่มผู้ใช้งาน</button>
+          <div style={{ padding: 16, borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.6 }}>
+              เพิ่ม/ลบผู้ใช้งานผ่าน Google Sheets · ชีต <code style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '2px 6px', background: 'var(--paper-3)', borderRadius: 4 }}>staff</code>
+            </span>
+            <button className="btn btn-ghost" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+              <Icon name="plus" size={14} /> เพิ่มผู้ใช้งาน
+            </button>
           </div>
         </div>
       }
@@ -1919,19 +2144,6 @@ function AdminScreen({ families, assessments, lang, thresholds, user }) {
                 <div className="serif" style={{ fontSize: 36, color: x.color, marginTop: 4 }}>{x.v}<span style={{ fontSize: 14, color: 'var(--ink-4)', fontFamily: 'var(--mono)' }}>/104</span></div>
               </div>
           )}
-          </div>
-        </div>
-      }
-
-      {tab === 'export' &&
-      <div className="card" style={{ padding: 28 }}>
-          <h3 className="serif" style={{ marginBottom: 6 }}>ส่งออกข้อมูล</h3>
-          <p style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
-            ส่งออกข้อมูลการประเมินที่ไม่ระบุตัวตน สำหรับการพัฒนาคุณภาพหรืองานวิจัย
-          </p>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-primary"><Icon name="arrow-down" size={14} /> ส่งออก CSV ({assessments.length} แถว)</button>
-            <button className="btn btn-ghost">ส่งออก JSON</button>
           </div>
         </div>
       }

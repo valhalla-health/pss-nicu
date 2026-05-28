@@ -175,6 +175,16 @@ const Icon = ({ name, size = 18, stroke = 1.6, color = 'currentColor' }) => {
     case 'download':return <svg {...props}><path d="M12 3v13M7 13l5 5 5-5" /><path d="M5 21h14" /></svg>;
     case 'logo':return (
         <img src="assets/pss-nicu-logo.png" alt="PSS:NICU" width={size} height={size} style={{ display: 'block', objectFit: 'contain' }} />);
+    case 'logo-framed':return (
+        <span style={{
+          width: size, height: size, borderRadius: '50%',
+          background: 'var(--peach-soft)',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          padding: size * 0.1, flexShrink: 0,
+          boxShadow: 'inset 0 0 0 1px rgba(196,90,62,.18)',
+        }}>
+          <img src="assets/pss-nicu-logo.png" alt="PSS:NICU" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        </span>);
 
 
     default:return null;
@@ -349,15 +359,20 @@ function Avatar({ initials, size = 36, palette = 'terracotta', _fontSize }) {
     blue: ['#8da9c4', '#5d7d9c']
   };
   const [a, b] = palettes[palette] || palettes.terracotta;
+  const s = String(initials || '?');
+  // Auto-shrink long bed labels (e.g. "iso 1-1") so they always fit inside the circle.
+  const baseFs = _fontSize || (s.length <= 2 ? size * 0.42 : s.length <= 3 ? size * 0.34 : s.length <= 4 ? size * 0.26 : size * 0.22);
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
       background: `linear-gradient(135deg, ${a}, ${b})`,
       color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: _fontSize || size * 0.38, fontWeight: 700, letterSpacing: '0.02em',
+      fontSize: baseFs, fontWeight: 700, letterSpacing: s.length > 3 ? 0 : '0.02em',
       boxShadow: 'inset 0 -2px 4px rgba(0,0,0,.12)',
-      flexShrink: 0, lineHeight: 1
-    }}>{initials}</div>);
+      flexShrink: 0, lineHeight: 1,
+      overflow: 'hidden', padding: '0 6%', textAlign: 'center',
+      whiteSpace: 'nowrap',
+    }}>{s}</div>);
 
 }
 
@@ -369,9 +384,33 @@ function nameToInitials(s) {
   if (!s) return '?';
   const src = s.includes('@') ? s.split('@')[0] : s;
   const firstWord = src.trim().split(/[\s._-]+/)[0] || src;
-  const withoutLeadVowel = firstWord.replace(/^[เ-ไ]+/, '');
+  const withoutLeadVowel = firstWord.replace(/^[\u0e40-\u0e44]+/, '');
   const ch = withoutLeadVowel[0] || firstWord[0] || '?';
   return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;
+}
+
+// Derive 1–2-char initials from a full Thai/English name.
+//   'สมชาย แซ่หวัง' → 'สซ'
+//   'John Smith' → 'JS'
+//   'มาลี'         → 'ม'   (single word → single initial)
+function deriveInitials(s) {
+  if (!s) return '';
+  const parts = s.trim().split(/\s+/).slice(0, 2);
+  const grab = (p) => {
+    const noLeadVowel = p.replace(/^[\u0e40-\u0e44]+/, '');
+    const ch = noLeadVowel[0] || p[0] || '';
+    return /[a-zA-Z]/.test(ch) ? ch.toUpperCase() : ch;
+  };
+  return parts.map(grab).join('').slice(0, 3);
+}
+
+// Display label for a family card.
+// Prefer hand-entered initials, then derived initials from name, then fall back to bed.
+function famLabel(fam) {
+  if (!fam) return '';
+  if (fam.initials) return fam.initials;
+  if (fam.name) return deriveInitials(fam.name);
+  return 'เตียง ' + (fam.bed || '');
 }
 
 // Show name part only (strip email domain)
@@ -401,12 +440,14 @@ function TopNav({ user, route, onRoute, lang, onLangToggle, alertCount, onLogout
       position: 'sticky', top: 0, zIndex: 50
     }}>
       {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <Icon name="logo" size={isCompact ? 26 : 32} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <Icon name="logo-framed" size={isCompact ? 30 : 38} />
         {!isCompact && (
-          <div style={{ lineHeight: 1.1 }}>
-            <div className="serif" style={{ fontSize: 18, fontWeight: 600 }}>PSS:NICU</div>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>MILD MIND</div>
+          <div style={{ lineHeight: 1.05 }}>
+            <div style={{ fontFamily: "'Newsreader', Georgia, serif", fontSize: 21, fontWeight: 500, letterSpacing: '0.04em', color: 'var(--ink)' }}>
+              PSS<span style={{ color: 'var(--terracotta)', margin: '0 0.08em', fontWeight: 500 }}>:</span>NICU
+            </div>
+            <div style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>Parental Stress Scale</div>
           </div>
         )}
       </div>
@@ -542,19 +583,10 @@ function StatCard({ label, value, suffix, hint, accent = 'var(--terracotta)', ch
 function SlimHeader({ alertCount, onSearch, user, onLogout, title = 'PSS:NICU' }) {
   return (
     <header className="pss-slim-header">
-      <Icon name="logo" size={26} />
-      <span className="serif" style={{ fontSize: 17, fontWeight: 600, flex: 1 }}>{title}</span>
-      {alertCount > 0 && (
-        <div style={{ position: 'relative', marginRight: 2 }}>
-          <Icon name="bell" size={22} color="var(--rose)" />
-          <span style={{
-            position: 'absolute', top: -5, right: -5,
-            background: 'var(--rose)', color: '#fff',
-            fontSize: 9, fontWeight: 800, borderRadius: 99,
-            padding: '1px 4px', minWidth: 15, textAlign: 'center', lineHeight: 1.4,
-          }}>{alertCount}</span>
-        </div>
-      )}
+      <Icon name="logo-framed" size={30} />
+      <span style={{ fontFamily: "'Newsreader', Georgia, serif", fontSize: 19, fontWeight: 500, letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
+        PSS<span style={{ color: 'var(--terracotta)', margin: '0 0.06em' }}>:</span>NICU
+      </span>
       {onSearch && (
         <button onClick={onSearch} style={{ padding: '8px', touchAction: 'manipulation', color: 'var(--ink-3)' }}>
           <Icon name="search" size={20} />
@@ -679,12 +711,12 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
           <Avatar initials={lbl} size={avSz} _fontSize={lbl.length > 3 ? avSz * 0.26 : avSz * 0.38}
             palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : sev.key === 'mod' ? 'terracotta' : 'sage'} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>เตียง {fam.bed}</span>
-              {days && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', background: 'var(--paper-3)', padding: '1px 5px', borderRadius: 99 }}>D {days}</span>}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{famLabel(fam)}</span>
+              {days && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-4)', background: 'var(--paper-3)', padding: '1px 5px', borderRadius: 99, marginLeft: 'auto', flexShrink: 0 }}>DOL {days}</span>}
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {fam.relation} · GA {fam.ga}wk · BW {fam.bw}g
+              เตียง {fam.bed} · GA {fam.ga}wk · BW {fam.bw}g
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
@@ -707,7 +739,7 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
     style={{
       width: '100%', textAlign: 'left',
       display: 'grid',
-      gridTemplateColumns: 'auto 1.6fr 1fr 1.2fr 1.5fr auto',
+      gridTemplateColumns: 'auto 2.4fr 0.8fr 1fr 1.5fr auto',
       alignItems: 'center', gap: dense ? 12 : 18,
       padding: dense ? '12px 18px' : '16px 20px',
       background: 'var(--card)',
@@ -722,18 +754,18 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
         palette={sev.key === 'extreme' ? 'plum' : sev.key === 'high' ? 'terracotta' : sev.key === 'mod' ? 'terracotta' : 'sage'} />
 
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: dense ? 14 : 15, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>
-          เตียง {fam.bed}
+        <div style={{ fontSize: dense ? 14 : 16, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {famLabel(fam)}
         </div>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {fam.relation} · GA {fam.ga}wk · BW {fam.bw}g
+          เตียง {fam.bed} · GA {fam.ga}wk · BW {fam.bw}g
         </div>
       </div>
 
       <div>
-        <div style={{ fontSize: 11, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>{t('day', lang)}</div>
+        <div style={{ fontSize: 11, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>DOL</div>
         <div>
-          {days && <span style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>D {days}</span>}
+          {days && <span style={{ fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>{days}</span>}
           {dateStr && <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 1 }}>{dateStr}</div>}
           {!days && !dateStr && <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--ink-3)' }}>—</span>}
         </div>
@@ -750,7 +782,7 @@ function FamilyRow({ fam, lastAss, trend, onOpen, lang, dense, thresholds }) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <MiniTrend values={trend || []} color={sev.color} width={70} height={26} />
-        <span className="pill" style={{ background: pillM.cls.includes('extreme') ? 'rgba(111,59,88,.12)' : pillM.cls.includes('high') ? 'rgba(179,80,62,.12)' : pillM.cls.includes('mod') ? 'rgba(214,138,94,.14)' : pillM.cls.includes('mild') ? 'rgba(200,154,62,.12)' : 'rgba(110,138,106,.10)', color: sev.color, border: 'none', fontWeight: 700 }}>
+        <span className="pill" style={{ whiteSpace: 'nowrap', background: pillM.cls.includes('extreme') ? 'rgba(111,59,88,.12)' : pillM.cls.includes('high') ? 'rgba(179,80,62,.12)' : pillM.cls.includes('mod') ? 'rgba(214,138,94,.14)' : pillM.cls.includes('mild') ? 'rgba(200,154,62,.12)' : 'rgba(110,138,106,.10)', color: sev.color, border: 'none', fontWeight: 700 }}>
           {pillM.label}
         </span>
       </div>
@@ -821,5 +853,6 @@ function ToastContainer() {
 Object.assign(window, {
   I18N, t, Icon, SeverityBadge, sevPill, MiniTrend, SubscaleBars,
   AreaTrend, Avatar, TopNav, SlimHeader, BottomTabBar, SectionHeading,
-  StatCard, FamilyRow, useIsMobile, SkeletonBlock, ToastContainer
+  StatCard, FamilyRow, useIsMobile, SkeletonBlock, ToastContainer,
+  deriveInitials, famLabel, nameToInitials,
 });

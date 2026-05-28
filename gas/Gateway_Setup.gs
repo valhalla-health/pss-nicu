@@ -3,7 +3,7 @@
 // Run RUN_ME_ONCE() once, then populate registry with real staff rows
 
 const KCMH_API = 'https://script.google.com/macros/s/AKfycbxdIS1_einxU-q9229f8stlU0Yx3-iPtx1iy6NQtcIRo6b9ubRFkORHToJ_W8ZKX36f/exec';
-const SPR_API  = 'https://script.google.com/macros/s/AKfycbzJO4zpyzgck98NSix_ShkILpDhxEpoTQY3mw2yAWjl3wBKTezqbhd8gi4ycNQcE7DE/exec';
+const SPR_API  = 'https://script.google.com/macros/s/AKfycbx1QaCGk6qNr7I3_BWXcfXEG3v1G5QVzlS25tM2KpKOVNfsq-US6anQqDL7y9zB0rNfXg/exec';
 
 function RUN_ME_ONCE() {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -110,6 +110,27 @@ function FIX_REGISTRY() {
   Logger.log('   nutnicha.tappituk@gmail.com — SPR admin');
   Logger.log('   nurse@spr.go.th            — SPR nurse    (placeholder — replace)');
   Logger.log('⚠️  Try logging in now. If still failing, check GATEWAY_SS_ID and redeploy Gateway.gs.');
+}
+
+// Run once to point all SPR rows at the new deployment URL
+function FIX_SPR_API_URL() {
+  const ssId = PropertiesService.getScriptProperties().getProperty('GATEWAY_SS_ID');
+  if (!ssId) { Logger.log('❌ GATEWAY_SS_ID not set'); return; }
+  const sheet = SpreadsheetApp.openById(ssId).getSheetByName('registry');
+  const data  = sheet.getDataRange().getValues();
+  const hdrs  = data[0].map(h => String(h).trim().toLowerCase());
+  const apiIdx  = hdrs.indexOf('apiurl');
+  const hospIdx = hdrs.indexOf('hospitalcode');
+  if (apiIdx < 0 || hospIdx < 0) { Logger.log('❌ Column not found'); return; }
+  let fixed = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][hospIdx]).trim().toUpperCase() === 'SPR') {
+      sheet.getRange(i + 1, apiIdx + 1).setValue(SPR_API);
+      Logger.log('✅ Row ' + (i + 1) + ' → SPR_API updated');
+      fixed++;
+    }
+  }
+  Logger.log(fixed + ' SPR row(s) updated → ' + SPR_API);
 }
 
 // Run this to add a new hospital in future — no code deploy needed

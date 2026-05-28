@@ -3,7 +3,7 @@
 // Run RUN_ME_ONCE() once, then populate registry with real staff rows
 
 const KCMH_API = 'https://script.google.com/macros/s/AKfycbxdIS1_einxU-q9229f8stlU0Yx3-iPtx1iy6NQtcIRo6b9ubRFkORHToJ_W8ZKX36f/exec';
-const SPR_API  = 'https://script.google.com/macros/s/AKfycbwegxLwcQyl-WQY9gu0Yyf-Rl3UYkjoPf3w6TQVceaH1k93jFPCdl3xalZ_XiNhwoMa/exec';
+const SPR_API  = 'https://script.google.com/macros/s/AKfycbzJO4zpyzgck98NSix_ShkILpDhxEpoTQY3mw2yAWjl3wBKTezqbhd8gi4ycNQcE7DE/exec';
 
 function RUN_ME_ONCE() {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();

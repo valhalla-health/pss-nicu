@@ -9,6 +9,7 @@ const OFFLINE_QUEUE_KEY = 'pss_pending_assessments';
 
 function App() {
   const isCompact = useIsMobile(1024);
+  const isMobLoad = useIsMobile();
   const [user, setUser]           = aS(null);
   const [route, setRoute]         = aS('dashboard');
   const [openFamId, setOpenFamId] = aS(null);
@@ -24,6 +25,19 @@ function App() {
     catch { return {}; }
   });
   const [showSearch, setShowSearch] = aS(false);
+
+  // Restore session from sessionStorage on mount (survives page reload)
+  aE(() => {
+    const stored = sessionStorage.getItem('pss_token');
+    if (!stored) return;
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'login', token: stored })
+    }).then(r => r.json())
+      .then(d => { if (d.status === 'ok') setUser({ ...d, token: stored }); })
+      .catch(() => {});
+  }, []);
 
   // Load data from API after login
   aE(() => {
@@ -113,6 +127,12 @@ function App() {
       if (!window.google?.accounts?.id) return;
       window.google.accounts.id.prompt((n) => {
         if (n.isSkippedMoment() || n.isDismissedMoment()) {
+          // Check JWT exp before forcing logout — One Tap is suppressed on iOS Safari
+          // even when the token is still valid; only log out if actually expired
+          try {
+            const exp = JSON.parse(atob(user.token.split('.')[1])).exp;
+            if (Date.now() / 1000 < exp - 60) return;
+          } catch {}
           console.warn('[PSS] Token refresh suppressed — forcing re-login');
           setUser(null);
         }
@@ -294,23 +314,22 @@ function App() {
   if (!user) return <LoginScreen onLogin={setUser} lang={lang} />;
 
   if (loading) {
-    const isMob = window.innerWidth <= 640;
     return (
       <div style={{ background: 'var(--paper)', minHeight: '100vh' }}>
         {/* Skeleton TopNav */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMob ? 8 : 16, padding: isMob ? '10px 14px' : '14px 28px', background: 'var(--card)', borderBottom: '1px solid var(--line)' }}>
-          <SkeletonBlock w={isMob ? 28 : 130} h={32} r={8} />
-          {(isMob ? [40,40,40,40] : [90,100,80,90]).map((w, i) => <SkeletonBlock key={i} w={w} h={32} r={99} />)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobLoad ? 8 : 16, padding: isMobLoad ? '10px 14px' : '14px 28px', background: 'var(--card)', borderBottom: '1px solid var(--line)' }}>
+          <SkeletonBlock w={isMobLoad ? 28 : 130} h={32} r={8} />
+          {(isMobLoad ? [40,40,40,40] : [90,100,80,90]).map((w, i) => <SkeletonBlock key={i} w={w} h={32} r={99} />)}
           <div style={{ flex: 1 }} />
-          <SkeletonBlock w={isMob ? 32 : 110} h={32} r={99} />
-          <SkeletonBlock w={isMob ? 30 : 36} h={isMob ? 30 : 36} r={99} />
-          {!isMob && <SkeletonBlock w={80} h={32} r={99} />}
+          <SkeletonBlock w={isMobLoad ? 32 : 110} h={32} r={99} />
+          <SkeletonBlock w={isMobLoad ? 30 : 36} h={isMobLoad ? 30 : 36} r={99} />
+          {!isMobLoad && <SkeletonBlock w={80} h={32} r={99} />}
         </div>
         {/* Skeleton Dashboard */}
-        <div style={{ padding: isMob ? '20px 16px' : '32px 28px', maxWidth: 1400, margin: '0 auto' }}>
-          <SkeletonBlock w={isMob ? '70%' : '36%'} h={isMob ? 32 : 44} r={8} />
+        <div style={{ padding: isMobLoad ? '20px 16px' : '32px 28px', maxWidth: 1400, margin: '0 auto' }}>
+          <SkeletonBlock w={isMobLoad ? '70%' : '36%'} h={isMobLoad ? 32 : 44} r={8} />
           <div style={{ marginTop: 10, marginBottom: 28 }}><SkeletonBlock w="22%" h={16} r={6} /></div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMob ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobLoad ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
             {[0,1,2,3].map(i => (
               <div key={i} className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <SkeletonBlock w="55%" h={11} r={4} />
@@ -319,13 +338,13 @@ function App() {
               </div>
             ))}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMob ? '1fr' : '1.4fr 1fr', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobLoad ? '1fr' : '1.4fr 1fr', gap: 20 }}>
             <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SkeletonBlock w="50%" h={14} r={5} />
               <SkeletonBlock w="65%" h={22} r={6} />
               {[0,1,2,3,4].map(i => <SkeletonBlock key={i} h={44} r={12} />)}
             </div>
-            {!isMob && <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {!isMobLoad && <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SkeletonBlock w="50%" h={14} r={5} />
               <SkeletonBlock w="65%" h={22} r={6} />
               {[0,1,2,3].map(i => <SkeletonBlock key={i} h={36} r={8} />)}
@@ -400,6 +419,8 @@ function App() {
 
   const handleLogout = () => {
     sessionStorage.removeItem('pss_token');
+    window.google?.accounts?.id?.disableAutoSelect?.();
+    Object.keys(localStorage).filter(k => k.startsWith('pss_')).forEach(k => localStorage.removeItem(k));
     setFamilies([]); setAssessments([]);
     setUser(null);
   };

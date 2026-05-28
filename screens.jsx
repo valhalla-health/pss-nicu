@@ -667,6 +667,11 @@ function AddFamilyForm({ onSave, onCancel, lang, isMobile }) {
         <input value={f.dx} onChange={e => set('dx', e.target.value)} placeholder="เช่น RDS, ventilator support" style={inputStyle} />
       </div>
 
+      {/* PDPA notice — Section 23/26 */}
+      <div style={{ fontSize: 10, color: 'var(--ink-4)', lineHeight: 1.6, marginBottom: 14, padding: '8px 10px', background: 'var(--paper-2)', borderRadius: 6 }}>
+        ข้อมูลที่บันทึกใช้เพื่อการดูแลผู้ป่วยและการวิจัยทางคลินิก ภายใต้ พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 และโครงการที่ได้รับอนุมัติจากคณะกรรมการจริยธรรมวิจัย
+      </div>
+
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button className="btn btn-ghost" onClick={onCancel}>{t('cancel', lang)}</button>
         <button className="btn btn-primary" onClick={submit} disabled={!valid || saving} style={{ opacity: valid ? 1 : 0.5 }}>

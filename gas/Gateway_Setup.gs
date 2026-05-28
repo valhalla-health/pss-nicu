@@ -33,6 +33,85 @@ function RUN_ME_ONCE() {
   Logger.log('   → Copy URL → set window.PSS_GATEWAY_URL in index.html');
 }
 
+// ── ONE-TIME FIX ────────────────────────────────────────────────────────────
+// Run if login is broken after registry edit. Detects missing email column,
+// inserts it, assigns real/placeholder emails, fixes duplicate SPR admin row.
+function FIX_REGISTRY() {
+  const ssId = PropertiesService.getScriptProperties().getProperty('GATEWAY_SS_ID');
+  if (!ssId) { Logger.log('❌ GATEWAY_SS_ID not set in Script Properties'); return; }
+  const sheet = SpreadsheetApp.openById(ssId).getSheetByName('registry');
+  if (!sheet) { Logger.log('❌ Sheet named "registry" not found'); return; }
+
+  // If column A is already "email" the structure is correct — nothing to do
+  const a1 = String(sheet.getRange('A1').getValue()).trim().toLowerCase();
+  if (a1 === 'email') {
+    Logger.log('ℹ️  Email column already present — no structural fix needed.');
+    Logger.log('    Check individual rows for empty emails or active ≠ TRUE.');
+    return;
+  }
+
+  // ── Column A is missing (data starts at B) → insert email column ──────────
+  Logger.log('🔧 Inserting email column at A...');
+  sheet.insertColumnBefore(1);
+  sheet.getRange('A1').setValue('email').setFontWeight('bold').setBackground('#f3f3f3');
+
+  // Re-read after insertion: A=email(empty), B=name, C=role, D=hospitalCode,
+  //                           E=hospitalName, F=apiUrl, G=active
+  const data = sheet.getDataRange().getValues();
+
+  let kcmhAdminCount = 0;
+  let sprAdminCount  = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const role     = String(data[i][2]).trim();
+    const hospital = String(data[i][3]).trim();
+    if (!role && !hospital) continue; // skip blank rows
+
+    const row = i + 1; // 1-indexed sheet row
+
+    if (hospital === 'KCMH') {
+      if (role === 'admin') {
+        kcmhAdminCount++;
+        sheet.getRange(row, 1).setValue(
+          kcmhAdminCount === 1 ? 'praew.tvl@gmail.com' : 'peeraporn.po@chula.ac.th'
+        );
+      } else if (role === 'doctor') {
+        sheet.getRange(row, 1).setValue('doctor@kcmh.or.th');
+      } else if (role === 'nurse') {
+        sheet.getRange(row, 1).setValue('nurse@kcmh.or.th');
+      }
+
+    } else if (hospital === 'SPR') {
+      if (role === 'admin') {
+        sprAdminCount++;
+        if (sprAdminCount === 1) {
+          sheet.getRange(row, 1).setValue('nutnicha.tappituk@gmail.com');
+        } else {
+          // Duplicate SPR admin — repurpose as peeraporn's KCMH admin row
+          sheet.getRange(row, 1).setValue('peeraporn.po@chula.ac.th');
+          sheet.getRange(row, 2).setValue('ผู้ดูแลระบบ KCMH');    // B = name
+          sheet.getRange(row, 4).setValue('KCMH');                  // D = hospitalCode
+          sheet.getRange(row, 5).setValue('โรงพยาบาลจุฬาลงกรณ์'); // E = hospitalName
+          sheet.getRange(row, 6).setValue(KCMH_API);               // F = apiUrl
+          Logger.log('  ↳ Row ' + row + ': repurposed duplicate SPR admin → peeraporn KCMH admin');
+        }
+      } else if (role === 'nurse') {
+        sheet.getRange(row, 1).setValue('nurse@spr.go.th');
+      }
+    }
+  }
+
+  sheet.autoResizeColumns(1, 1);
+  Logger.log('✅ Done. Registry now has:');
+  Logger.log('   praew.tvl@gmail.com        — KCMH admin');
+  Logger.log('   peeraporn.po@chula.ac.th   — KCMH admin');
+  Logger.log('   doctor@kcmh.or.th          — KCMH doctor  (placeholder — replace)');
+  Logger.log('   nurse@kcmh.or.th           — KCMH nurse   (placeholder — replace)');
+  Logger.log('   nutnicha.tappituk@gmail.com — SPR admin');
+  Logger.log('   nurse@spr.go.th            — SPR nurse    (placeholder — replace)');
+  Logger.log('⚠️  Try logging in now. If still failing, check GATEWAY_SS_ID and redeploy Gateway.gs.');
+}
+
 // Run this to add a new hospital in future — no code deploy needed
 function ADD_HOSPITAL_STAFF() {
   // Edit these, then run

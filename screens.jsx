@@ -54,7 +54,7 @@ function LoginScreen({ onLogin, lang }) {
             if (data.status === 'suspended')
               throw new Error('บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
             if (data.status === 'config_error')
-              throw new Error('ระบบ Gateway ตั้งค่าไม่สมบูรณ์ กรุณาติดต่อผู้ดูแลระบบ (config_error)');
+              throw new Error('config_error: ' + (data.message || '(no detail)'));
             throw new Error('ไม่พบบัญชีนี้ในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มสิทธิ์');
           } catch (err) {
             setError(err.message || 'เชื่อมต่อระบบไม่ได้ กรุณาลองอีกครั้ง');

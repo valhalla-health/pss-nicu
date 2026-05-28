@@ -2010,121 +2010,29 @@ function AlertCard({ item, reasons, lang, thresholds, onOpen, onSaveNote }) {
 // ===== ADMIN ======================================================
 function AdminScreen({ families, assessments, lang, thresholds, user }) {
   const isMobile = useIsMobile();
-  const [tab, setTab] = uS('users');
-  const [staff, setStaff] = uS([]);
-  const [staffLoading, setStaffLoading] = uS(true);
-
-  uE(() => {
-    const apiUrl = user?.apiUrl || window.PSS_API_URL;
-    if (!user?.token || !apiUrl) { setStaffLoading(false); return; }
-    if (user?.token === 'dev-bypass') {
-      setStaff([
-        { email: 'admin@dev.local', name: 'Dev Admin', role: 'admin',  hospitalCode: user.hospitalCode, active: true },
-        { email: 'nurse@dev.local', name: 'Dev Nurse', role: 'nurse',  hospitalCode: user.hospitalCode, active: true },
-      ]);
-      setStaffLoading(false);
-      return;
-    }
-    fetch(`${apiUrl}?action=getStaff&token=${encodeURIComponent(user.token)}`)
-      .then(r => r.json())
-      .then(d => { if (d.status === 'ok') setStaff(d.staff); })
-      .catch(() => {})
-      .finally(() => setStaffLoading(false));
-  }, [user]);
 
   return (
     <div style={{ padding: isMobile ? '20px 16px 130px' : '32px 28px 80px', maxWidth: 1200, margin: '0 auto' }}>
       <SectionHeading eyebrow="การตั้งค่า" title="ผู้ดูแลระบบ" />
 
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        {[
-        { k: 'users',      label: 'ผู้ใช้งาน' },
-        { k: 'thresholds', label: 'ค่าเกณฑ์' }].
-        map((tb) =>
-        <button key={tb.k} onClick={() => setTab(tb.k)}
-        style={{
-          padding: '12px 18px', fontSize: 13, fontWeight: 600,
-          color: tab === tb.k ? 'var(--terracotta)' : 'var(--ink-3)',
-          borderBottom: '2px solid ' + (tab === tb.k ? 'var(--terracotta)' : 'transparent'),
-          marginBottom: -1
-        }}>{tb.label}</button>
-        )}
-      </div>
-
-      {tab === 'users' &&
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 480 }}>
-            <thead>
-              <tr style={{ background: 'var(--paper)', borderBottom: '1px solid var(--line)' }}>
-                <th style={{ padding: 14, textAlign: 'left', fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>ผู้ใช้งาน</th>
-                <th style={{ padding: 14, textAlign: 'left', fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>บทบาท</th>
-                <th style={{ padding: 14, textAlign: 'left', fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>แผนก</th>
-                <th style={{ padding: 14, textAlign: 'right', fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {staffLoading
-                ? <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: 'var(--ink-4)', fontSize: 13 }}>กำลังโหลด...</td></tr>
-                : staff.length === 0
-                  ? <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: 'var(--ink-4)', fontSize: 13 }}>ไม่พบข้อมูล — เพิ่ม staff ใน Google Sheets โดยตรง</td></tr>
-                  : staff.filter(s => s.active !== false && s.active !== 'FALSE').map((u, i) =>
-                    <tr key={i} style={{ borderBottom: '1px solid var(--line-soft)' }}>
-                      <td style={{ padding: 14 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Avatar initials={nameToInitials(u.name || u.email)} size={32} palette={u.role === 'doctor' ? 'terracotta' : u.role === 'admin' ? 'plum' : 'sage'} />
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{u.name || fmtBy(u.email)}</div>
-                            <div style={{ fontSize: 11, color: 'var(--ink-4)' }}>{u.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: 14 }}>
-                        <span className="pill">{ROLE_TH[u.role] || u.role}</span>
-                      </td>
-                      <td style={{ padding: 14, color: 'var(--ink-3)' }}>{u.hospitalCode}</td>
-                      <td style={{ padding: 14, textAlign: 'right' }}>
-                        <span style={{ fontSize: 11, color: u.active === true || u.active === 'TRUE' ? 'var(--sage)' : 'var(--ink-4)', fontWeight: 600 }}>
-                          {u.active === true || u.active === 'TRUE' ? '● ใช้งาน' : '○ ระงับ'}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-              }
-            </tbody>
-          </table>
-        </div>
-          <div style={{ padding: 16, borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.6 }}>
-              เพิ่ม/ลบผู้ใช้งานผ่าน Google Sheets · ชีต <code style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '2px 6px', background: 'var(--paper-3)', borderRadius: 4 }}>staff</code>
-            </span>
-            <button className="btn btn-ghost" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-              <Icon name="plus" size={14} /> เพิ่มผู้ใช้งาน
-            </button>
-          </div>
-        </div>
-      }
-
-      {tab === 'thresholds' &&
       <div className="card" style={{ padding: 28 }}>
-          <h3 className="serif" style={{ marginBottom: 6 }}>ค่าเกณฑ์ความเครียด</h3>
-          <p style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 24 }}>
-            ปรับค่าผ่านแผง Tweaks (ปุ่มมุมขวาบน) ค่าปัจจุบันแสดงด้านล่าง
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 16 }}>
-            {[
-          { label: 'เล็กน้อย ≥', v: thresholds.mild, color: 'var(--sev-mild)' },
-          { label: 'ปานกลาง ≥', v: thresholds.mod,  color: 'var(--sev-mod)' },
-          { label: 'มาก ≥',      v: thresholds.high, color: 'var(--sev-high)' }].
+        <h3 className="serif" style={{ marginBottom: 6 }}>ค่าเกณฑ์ความเครียด</h3>
+        <p style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 24 }}>
+          ปรับค่าผ่านแผง Tweaks (ปุ่มมุมขวาบน) ค่าปัจจุบันแสดงด้านล่าง
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 16 }}>
+          {[
+            { label: 'เล็กน้อย ≥', v: thresholds.mild, color: 'var(--sev-mild)' },
+            { label: 'ปานกลาง ≥', v: thresholds.mod,  color: 'var(--sev-mod)' },
+            { label: 'มาก ≥',      v: thresholds.high, color: 'var(--sev-high)' }].
           map((x) =>
-          <div key={x.label} style={{ padding: 18, background: 'var(--paper)', borderRadius: 12, borderLeft: `3px solid ${x.color}` }}>
-                <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>{x.label}</div>
-                <div className="serif" style={{ fontSize: 36, color: x.color, marginTop: 4 }}>{x.v}<span style={{ fontSize: 14, color: 'var(--ink-4)', fontFamily: 'var(--mono)' }}>/104</span></div>
-              </div>
+            <div key={x.label} style={{ padding: 18, background: 'var(--paper)', borderRadius: 12, borderLeft: `3px solid ${x.color}` }}>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>{x.label}</div>
+              <div className="serif" style={{ fontSize: 36, color: x.color, marginTop: 4 }}>{x.v}<span style={{ fontSize: 14, color: 'var(--ink-4)', fontFamily: 'var(--mono)' }}>/104</span></div>
+            </div>
           )}
-          </div>
         </div>
-      }
+      </div>
     </div>);
 
 }

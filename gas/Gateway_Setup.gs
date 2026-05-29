@@ -2,7 +2,7 @@
 // Paste alongside Gateway.gs in the gateway Apps Script project
 // Run RUN_ME_ONCE() once, then populate registry with real staff rows
 
-const KCMH_API = 'https://script.google.com/macros/s/AKfycbxdIS1_einxU-q9229f8stlU0Yx3-iPtx1iy6NQtcIRo6b9ubRFkORHToJ_W8ZKX36f/exec';
+const KCMH_API = 'https://script.google.com/macros/s/AKfycbwuKORmzzFiLbl3g305SL2S7h8OXGbT3wkUE2wN2L1AeQm9xQBrcRFReAmS6RNizEaR/exec';
 const SPR_API  = 'https://script.google.com/macros/s/AKfycbx1QaCGk6qNr7I3_BWXcfXEG3v1G5QVzlS25tM2KpKOVNfsq-US6anQqDL7y9zB0rNfXg/exec';
 
 function RUN_ME_ONCE() {

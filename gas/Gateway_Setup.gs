@@ -11,8 +11,8 @@ function RUN_ME_ONCE() {
   if (sheet) { Logger.log('⚠️ Registry already exists — skipped. Edit rows directly.'); return; }
 
   sheet = ss.insertSheet('registry');
-  sheet.appendRow(['email', 'name', 'role', 'hospitalCode', 'hospitalName', 'apiUrl', 'active']);
-  sheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#f3f3f3');
+  sheet.appendRow(['email', 'name', 'role', 'hospitalCode', 'hospitalName', 'apiUrl', 'active', 'password_hash', 'salt']);
+  sheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#f3f3f3');
   sheet.setFrozenRows(1);
 
   // ── Sample rows — replace with real staff emails before going live ─────────
@@ -24,7 +24,7 @@ function RUN_ME_ONCE() {
   sheet.appendRow(['admin@spr.go.th',   'ผู้ดูแลระบบ SPR',   'admin',  'SPR',  'โรงพยาบาลสวรรค์ประชารักษ์', SPR_API,  true]);
   sheet.appendRow(['nurse@spr.go.th',   'พยาบาล SPR',         'nurse',  'SPR',  'โรงพยาบาลสวรรค์ประชารักษ์', SPR_API,  true]);
 
-  sheet.autoResizeColumns(1, 7);
+  sheet.autoResizeColumns(1, 9);
 
   Logger.log('✅ Registry created with sample rows');
   Logger.log('   → Edit email/name/role to match real staff accounts');
@@ -143,6 +143,51 @@ function ADD_HOSPITAL_STAFF() {
   ];
   if (!newStaff.length) { Logger.log('⚠️ Edit newStaff array first'); return; }
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('registry');
-  newStaff.forEach(s => sheet.appendRow([s.email, s.name, s.role, s.hospitalCode, s.hospitalName, s.apiUrl, s.active]));
-  Logger.log('✅ Added ' + newStaff.length + ' staff row(s)');
+  newStaff.forEach(s => sheet.appendRow([s.email, s.name, s.role, s.hospitalCode, s.hospitalName, s.apiUrl, s.active, '', '']));
+  Logger.log('✅ Added ' + newStaff.length + ' staff row(s).');
+}
+
+// ── Set or reset a non-Gmail staff password ─────────────────────────────────
+// Run from Apps Script editor: setInitialPassword("resident@redcross.or.th", "TempPass1")
+// The staff row must already exist in the registry sheet.
+function setInitialPassword(email, password) {
+  if (!email || !password) { Logger.log('❌ Usage: setInitialPassword("email", "password")'); return; }
+  const ssId = PropertiesService.getScriptProperties().getProperty('GATEWAY_SS_ID');
+  if (!ssId) { Logger.log('❌ GATEWAY_SS_ID not set in Script Properties'); return; }
+  const sheet = SpreadsheetApp.openById(ssId).getSheetByName('registry');
+  if (!sheet) { Logger.log('❌ Sheet "registry" not found'); return; }
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim().toLowerCase());
+  const emailIdx = headers.indexOf('email');
+  const hashIdx  = headers.indexOf('password_hash');
+  const saltIdx  = headers.indexOf('salt');
+
+  if (emailIdx < 0 || hashIdx < 0 || saltIdx < 0) {
+    Logger.log('❌ Missing columns. Expected: email, password_hash, salt');
+    Logger.log('   Run RUN_ME_ONCE() first or add cols H=password_hash I=salt manually.');
+    return;
+  }
+
+  const emailLow = email.trim().toLowerCase();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][emailIdx]).trim().toLowerCase() !== emailLow) continue;
+    const salt = Utilities.getUuid().replace(/-/g, '');
+    const hash = Gateway_hashPassword(password, salt);
+    sheet.getRange(i + 1, hashIdx + 1).setValue(hash);
+    sheet.getRange(i + 1, saltIdx  + 1).setValue(salt);
+    Logger.log('✅ Password set for ' + emailLow);
+    return;
+  }
+  Logger.log('❌ Email not found in registry: ' + emailLow);
+}
+
+// Standalone hash helper (mirrors Gateway.gs hashPassword — keep in sync)
+function Gateway_hashPassword(password, salt) {
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    salt + password,
+    Utilities.Charset.UTF_8
+  );
+  return bytes.map(b => ('0' + (b & 0xff).toString(16)).slice(-2)).join('');
 }

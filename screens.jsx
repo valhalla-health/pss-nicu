@@ -15,10 +15,13 @@ function greeting() {
 
 // ===== LOGIN =======================================================
 function LoginScreen({ onLogin, lang }) {
-  const [loading, setLoading] = uS(false);
-  const [clicked, setClicked] = uS(false);
-  const [error, setError]     = uS(null);
+  const [loading, setLoading]         = uS(false);
+  const [clicked, setClicked]         = uS(false);
+  const [error, setError]             = uS(null);
   const [googleReady, setGoogleReady] = uS(false);
+  const [emailMode, setEmailMode]     = uS(false);
+  const [emailVal, setEmailVal]       = uS('');
+  const [pwdVal, setPwdVal]           = uS('');
   const btnRef = React.useRef(null);
 
   // Safety reset: if user cancels Google popup, restore button after 500ms of focus return
@@ -47,8 +50,8 @@ function LoginScreen({ onLogin, lang }) {
             });
             const data = await res.json();
             if (data.status !== 'ok') throw new Error('ไม่พบบัญชีนี้ในระบบ หรือบัญชีถูกระงับ');
-            sessionStorage.setItem('pss_token', resp.credential);
-            onLogin({ ...data, token: resp.credential });
+            sessionStorage.setItem('pss_token', data.token);
+            onLogin(data);
           } catch (err) {
             setError('ไม่พบบัญชีนี้ในระบบ หรือเกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
             setLoading(false);
@@ -68,6 +71,33 @@ function LoginScreen({ onLogin, lang }) {
   }, []);
 
   const isBusy = clicked || loading;
+
+  const EMAIL_ERRORS = {
+    unauthorized: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+    not_found:    'ไม่พบบัญชีนี้ในระบบ',
+    suspended:    'บัญชีถูกระงับการใช้งาน',
+    no_password:  'บัญชีนี้ยังไม่ได้ตั้งรหัสผ่าน กรุณาติดต่อผู้ดูแลระบบ',
+  };
+
+  const handleEmailLogin = async () => {
+    if (!emailVal || !pwdVal || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(window.PSS_GATEWAY_URL || window.PSS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'login', email: emailVal.trim(), password: pwdVal }),
+      });
+      const data = await res.json();
+      if (data.status !== 'ok') throw new Error(EMAIL_ERRORS[data.status] || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+      sessionStorage.setItem('pss_token', data.token);
+      onLogin(data);
+    } catch (err) {
+      setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{
@@ -196,6 +226,74 @@ function LoginScreen({ onLogin, lang }) {
             </div>
           )}
         </div>
+
+        {/* Email/password toggle */}
+        {!isBusy && !emailMode && (
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <button
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.02em',
+              }}
+              onClick={() => { setEmailMode(true); setError(null); }}
+            >
+              เข้าด้วย email อื่น →
+            </button>
+          </div>
+        )}
+
+        {/* Email + password form */}
+        {emailMode && (
+          <div style={{ marginTop: 16 }}>
+            <button
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: 11, color: 'var(--ink-3)', marginBottom: 14,
+                display: 'block',
+              }}
+              onClick={() => { setEmailMode(false); setError(null); setEmailVal(''); setPwdVal(''); }}
+            >
+              ← Sign in ด้วย Google
+            </button>
+            <input
+              type="email"
+              value={emailVal}
+              onChange={e => setEmailVal(e.target.value)}
+              placeholder="อีเมล"
+              disabled={loading}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                padding: '10px 14px', marginBottom: 10,
+                border: '1px solid var(--line)', borderRadius: 8,
+                fontSize: 13, color: 'var(--ink)', background: 'var(--card)',
+                outline: 'none',
+              }}
+            />
+            <input
+              type="password"
+              value={pwdVal}
+              onChange={e => setPwdVal(e.target.value)}
+              placeholder="รหัสผ่าน"
+              disabled={loading}
+              onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                padding: '10px 14px', marginBottom: 14,
+                border: '1px solid var(--line)', borderRadius: 8,
+                fontSize: 13, color: 'var(--ink)', background: 'var(--card)',
+                outline: 'none',
+              }}
+            />
+            <button
+              className="btn btn-primary"
+              disabled={loading || !emailVal || !pwdVal}
+              onClick={handleEmailLogin}
+              style={{ width: '100%', padding: '10px 0', fontSize: 13 }}
+            >
+              {loading ? 'กำลังตรวจสอบ…' : 'เข้าสู่ระบบ'}
+            </button>
+          </div>
+        )}
 
         {/* Buyer hook — for hospitals not yet on the system */}
         {!isBusy && (

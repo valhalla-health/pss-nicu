@@ -25,7 +25,7 @@ function App() {
     fetch(GATEWAY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'login', token })
+      body: JSON.stringify({ action: 'verifySession', token })
     }).then(r => r.json()).then(d => {
       if (cancelled) return;
       if (d.status === 'ok') setUser({ ...d, token });
@@ -193,26 +193,7 @@ function App() {
     };
   }, [user]);
 
-  // ── 55-min Google ID token silent refresh ───────────────────────────────────
-  aE(() => {
-    if (!user) return;
-    const id = setInterval(() => {
-      if (!window.google?.accounts?.id) return;
-      window.google.accounts.id.prompt((n) => {
-        if (n.isSkippedMoment() || n.isDismissedMoment()) {
-          // Check JWT exp before forcing logout — One Tap is suppressed on iOS Safari
-          // even when the token is still valid; only log out if actually expired
-          try {
-            const exp = JSON.parse(atob(user.token.split('.')[1])).exp;
-            if (Date.now() / 1000 < exp - 60) return;
-          } catch {}
-          console.warn('[PSS] Token refresh suppressed — forcing re-login');
-          setUser(null);
-        }
-      });
-    }, 55 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [user]);
+  // Session tokens (UUID, 6h TTL) don't need Google token refresh — interval removed.
 
   // Tweaks
   const [tweaks, setTweak] = useTweaks(window.PSS_TWEAK_DEFAULTS);

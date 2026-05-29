@@ -184,8 +184,8 @@ function LoginScreen({ onLogin, lang }) {
           ประเมินความเครียดผู้ปกครอง · หอผู้ป่วยทารกแรกเกิด
         </div>
 
-        {/* Sign-in */}
-        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', minHeight: 44 }}>
+        {/* Sign-in — hidden in email mode */}
+        <div style={{ position: 'relative', display: emailMode ? 'none' : 'flex', justifyContent: 'center', minHeight: 44 }}>
           {/* Skeleton — แสดงขณะ Google SDK ยังไม่โหลด */}
           {!googleReady && !isBusy && (
             <div style={{
@@ -235,7 +235,7 @@ function LoginScreen({ onLogin, lang }) {
                 background: 'none', border: 'none', padding: 0, cursor: 'pointer',
                 fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.02em',
               }}
-              onClick={() => { setEmailMode(true); setError(null); }}
+              onClick={() => { setEmailMode(true); setError(null); window.google?.accounts?.id?.cancel?.(); }}
             >
               เข้าด้วย email อื่น →
             </button>

@@ -448,11 +448,15 @@ function TopNav({ user, route, onRoute, lang, onLangToggle, alertCount, onLogout
               PSS<span style={{ color: 'var(--terracotta)', margin: '0 0.08em', fontWeight: 500 }}>:</span>NICU
             </div>
             <div style={{ fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>Parental Stress Scale</div>
-            {user?.hospitalName && (
-              <div style={{ fontSize: 10, color: 'var(--terracotta)', fontWeight: 500, letterSpacing: '0.01em', marginTop: 3, lineHeight: 1.2 }}>
-                {user.hospitalName}
-              </div>
-            )}
+            {(() => {
+              const HOSP = { KCMH: 'โรงพยาบาลจุฬาลงกรณ์', SPR: 'โรงพยาบาลสวรรค์ประชารักษ์' };
+              const name = user?.hospitalName || HOSP[user?.hospitalCode] || '';
+              return name ? (
+                <div style={{ fontSize: 10, color: 'var(--terracotta)', fontWeight: 500, letterSpacing: '0.01em', marginTop: 3, lineHeight: 1.2 }}>
+                  {name}
+                </div>
+              ) : null;
+            })()}
           </div>
         )}
       </div>

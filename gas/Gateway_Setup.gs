@@ -2,7 +2,7 @@
 // Paste alongside Gateway.gs in the gateway Apps Script project
 // Run RUN_ME_ONCE() once, then populate registry with real staff rows
 
-const KCMH_API = 'https://script.google.com/macros/s/AKfycbwuKORmzzFiLbl3g305SL2S7h8OXGbT3wkUE2wN2L1AeQm9xQBrcRFReAmS6RNizEaR/exec';
+const KCMH_API = 'https://script.google.com/macros/s/AKfycbxdIS1_einxU-q9229f8stlU0Yx3-iPtx1iy6NQtcIRo6b9ubRFkORHToJ_W8ZKX36f/exec';
 const SPR_API  = 'https://script.google.com/macros/s/AKfycbx1QaCGk6qNr7I3_BWXcfXEG3v1G5QVzlS25tM2KpKOVNfsq-US6anQqDL7y9zB0rNfXg/exec';
 
 function RUN_ME_ONCE() {
@@ -110,6 +110,58 @@ function FIX_REGISTRY() {
   Logger.log('   nutnicha.tappituk@gmail.com — SPR admin');
   Logger.log('   nurse@spr.go.th            — SPR nurse    (placeholder — replace)');
   Logger.log('⚠️  Try logging in now. If still failing, check GATEWAY_SS_ID and redeploy Gateway.gs.');
+}
+
+// ── Audit all registry rows — print email, hospitalCode, apiUrl tail, active ──
+// Run this to quickly spot missing hospitalCode or stale apiUrl
+function AUDIT_REGISTRY() {
+  const ssId = PropertiesService.getScriptProperties().getProperty('GATEWAY_SS_ID');
+  if (!ssId) { Logger.log('❌ GATEWAY_SS_ID not set'); return; }
+  const sheet = SpreadsheetApp.openById(ssId).getSheetByName('registry');
+  if (!sheet) { Logger.log('❌ Sheet "registry" not found'); return; }
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) { Logger.log('⚠️ Registry is empty'); return; }
+  const hdrs = data[0].map(h => String(h).trim().toLowerCase());
+  const col = k => hdrs.indexOf(k);
+  Logger.log('=== REGISTRY AUDIT ===');
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    const email    = String(r[col('email')]        || '').trim();
+    const hosp     = String(r[col('hospitalcode')] || '').trim();
+    const apiUrl   = String(r[col('apiurl')]       || '').trim();
+    const active   = r[col('active')];
+    const hasHash  = !!String(r[col('password_hash')] || '').trim();
+    if (!email) continue;
+    const apiTail  = apiUrl ? ('…' + apiUrl.slice(-30)) : '❌ MISSING';
+    const hospMark = hosp   ? hosp : '❌ MISSING';
+    const actMark  = (active === true || String(active).trim().toUpperCase() === 'TRUE') ? 'active' : '⚠ inactive';
+    const pwdMark  = hasHash ? 'pwd✓' : 'no-pwd';
+    Logger.log(`  Row ${i+1}: ${email} | ${hospMark} | ${apiTail} | ${actMark} | ${pwdMark}`);
+  }
+  Logger.log('=== END ===');
+  Logger.log('Expected KCMH apiUrl tail: …' + KCMH_API.slice(-30));
+  Logger.log('Expected SPR  apiUrl tail: …' + SPR_API.slice(-30));
+}
+
+// Run once to point all KCMH rows at the current @20 deployment URL
+function FIX_KCMH_API_URL() {
+  const ssId = PropertiesService.getScriptProperties().getProperty('GATEWAY_SS_ID');
+  if (!ssId) { Logger.log('❌ GATEWAY_SS_ID not set'); return; }
+  const sheet = SpreadsheetApp.openById(ssId).getSheetByName('registry');
+  const data  = sheet.getDataRange().getValues();
+  const hdrs  = data[0].map(h => String(h).trim().toLowerCase());
+  const apiIdx  = hdrs.indexOf('apiurl');
+  const hospIdx = hdrs.indexOf('hospitalcode');
+  if (apiIdx < 0 || hospIdx < 0) { Logger.log('❌ Column not found'); return; }
+  let fixed = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][hospIdx]).trim().toUpperCase() === 'KCMH') {
+      sheet.getRange(i + 1, apiIdx + 1).setValue(KCMH_API);
+      Logger.log('✅ Row ' + (i + 1) + ' → KCMH_API @20 updated');
+      fixed++;
+    }
+  }
+  Logger.log(fixed + ' KCMH row(s) updated → ' + KCMH_API);
 }
 
 // Run once to point all SPR rows at the new deployment URL

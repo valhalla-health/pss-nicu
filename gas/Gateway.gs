@@ -92,8 +92,8 @@ function buildUserObj(r, email) {
     email:        email || String(r['email'] || '').trim(),
     name:         r['name']         || '',
     role:         r['role']         || '',
-    hospitalCode: r['hospitalcode'] || r['hospitalCode'] || '',
-    hospitalName: r['hospitalname'] || r['hospitalName'] || '',
+    hospitalCode: String(r['hospitalcode'] || r['hospitalCode'] || '').trim(),
+    hospitalName: String(r['hospitalname'] || r['hospitalName'] || '').trim(),
     apiUrl:       String(r['apiurl'] || r['apiUrl'] || '').trim(),
   };
 }

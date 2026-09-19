@@ -12,7 +12,7 @@ param(
     [string]$m    = ""
 )
 
-$root      = "C:\Users\USER\Desktop\pss-nicu"
+$root      = $PSScriptRoot   # this script sits at the repo root, wherever the repo lives
 $kcmhFile  = "$root\index.html"
 $sprFile   = "$root\index_spr.html"
 

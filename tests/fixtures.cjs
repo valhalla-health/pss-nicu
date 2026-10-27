@@ -93,4 +93,10 @@ function accounts() {
   })));
 }
 
-module.exports = { SITES, ROLES, ITEM_IDS, HEADERS, ALL_COLUMNS, siteRecords, siteMarkers, accounts };
+// The one account that may read and write both sites, once its email is in
+// the CROSS_SITE_EDITORS Script Property. An admin at KCMH otherwise.
+function editorAccount() {
+  return { token: 'tok-editor-KCMH', email: 'editor.kcmh@example.test', name: 'editor KCMH', role: 'admin', hospitalCode: 'KCMH' };
+}
+
+module.exports = { SITES, ROLES, ITEM_IDS, HEADERS, ALL_COLUMNS, siteRecords, siteMarkers, accounts, editorAccount };

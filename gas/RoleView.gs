@@ -2,15 +2,21 @@
 //
 // Copy this file into every hospital's Apps Script project, beside the
 // backend's code file. A file there shares one global scope with the others.
-// The backend then does three things in doPost:
+// The backend then does four things in doPost:
 //   1. after verifyToken:   if (!roleViewAllows(user, action)) return out(roleViewDenied());
 //   2. every data reply:    return out(roleViewReply(user, action, { status: 'ok', ... }));
 //   3. every refusal:       return out(roleViewDenied());
+//   4. every read filter and every write or delete: roleViewHasSite(user, row's hospitalCode)
 //
 // Hiding a field on screen is not enough: whatever a reply carries can be read
 // in the browser's network tab. So the server sends only the fields a role's
 // screens render, and only rows from the caller's own site (hospitalCode).
 // tests/roleview.test.cjs and tests/handlers.test.cjs check both.
+//
+// One exception (Pp, 2026-10-28): an admin whose email is listed in the Script
+// Property CROSS_SITE_EDITORS reads, writes and deletes on every site, because
+// editing the other site needs reading it. With the property empty, nobody
+// works across sites. Every other admin stays on its own site.
 
 // The one refusal text. It says only that the item is not open to this role
 // and never names the field, site or family behind it.
@@ -91,16 +97,48 @@ function roleViewSite_(site) {
   return String(site == null ? '' : site).trim();
 }
 
+// Pass as `site` to roleView() for an account that may see every site.
+const ROLE_VIEW_ANY_SITE = '*';
+
+const ROLE_VIEW_CROSS_SITE_PROPERTY = 'CROSS_SITE_EDITORS';
+
+// True for an admin listed in CROSS_SITE_EDITORS (emails separated by commas,
+// semicolons or spaces). False when the property is empty or unreadable.
+function roleViewCrossSite_(user) {
+  if (!user || roleViewRole_(user.role) !== 'admin') return false;
+  const email = String(user.email == null ? '' : user.email).trim().toLowerCase();
+  if (!email) return false;
+  let listed = '';
+  try {
+    listed = PropertiesService.getScriptProperties().getProperty(ROLE_VIEW_CROSS_SITE_PROPERTY) || '';
+  } catch (e) {
+    return false;
+  }
+  return String(listed).toLowerCase().split(/[\s,;]+/).indexOf(email) >= 0;
+}
+
+/**
+ * True when `user` may read, write and delete records of `site`: its own site,
+ * or any site for a cross-site editor. A record with no site is nobody's.
+ */
+function roleViewHasSite(user, site) {
+  const s = roleViewSite_(site);
+  if (!user || !s) return false;
+  return s === roleViewSite_(user.hospitalCode) || roleViewCrossSite_(user);
+}
+
 /**
  * One record as `role` at `site` may see it, or null when it may not see the
  * record at all: another site's row, a row with no site, an unknown role, or a
- * kind of record that role's screens never show.
+ * kind of record that role's screens never show. `site` may be
+ * ROLE_VIEW_ANY_SITE for a cross-site editor.
  */
 function roleView(role, site, record, kind) {
   const kinds = ROLE_VIEW_FIELDS[roleViewRole_(role)];
   const fields = kinds && kinds[kind];
-  const own = roleViewSite_(site);
-  if (!fields || !record || !own || roleViewSite_(record.hospitalCode) !== own) return null;
+  const want = roleViewSite_(site);
+  const has = record ? roleViewSite_(record.hospitalCode) : '';
+  if (!fields || !record || !want || !has || (want !== ROLE_VIEW_ANY_SITE && has !== want)) return null;
   const view = {};
   fields.forEach(function (f) {
     if (Object.prototype.hasOwnProperty.call(record, f)) view[f] = record[f];
@@ -127,13 +165,14 @@ function roleViewDenied() {
 function roleViewReply(user, action, reply) {
   if (!roleViewAllows(user, action)) return roleViewDenied();
   const keys = ROLE_VIEW_REPLY_KEYS[action] || [];
+  const site = roleViewCrossSite_(user) ? ROLE_VIEW_ANY_SITE : user.hospitalCode;
   const out = { status: reply && reply.status };
   keys.forEach(function (key) {
     if (!reply || !Object.prototype.hasOwnProperty.call(reply, key)) return;
     const kind = ROLE_VIEW_LISTS_[key];
     if (!kind) { out[key] = reply[key]; return; }
     out[key] = (reply[key] || [])
-      .map(function (rec) { return roleView(user.role, user.hospitalCode, rec, kind); })
+      .map(function (rec) { return roleView(user.role, site, rec, kind); })
       .filter(function (rec) { return rec !== null; });
   });
   return out;

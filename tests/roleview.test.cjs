@@ -11,8 +11,13 @@ const fx = require('./fixtures.cjs');
 
 const ROOT = path.join(__dirname, '..');
 
-function loadRoleView() {
-  const ctx = vm.createContext({});
+// Loads RoleView.gs; `editors` is the CROSS_SITE_EDITORS Script Property
+// (undefined: no PropertiesService at all, as outside Apps Script).
+function loadRoleView(editors) {
+  const globals = editors === undefined ? {} : {
+    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k === 'CROSS_SITE_EDITORS' ? editors : null) }) },
+  };
+  const ctx = vm.createContext(globals);
   const src = fs.readFileSync(path.join(ROOT, 'gas', 'RoleView.gs'), 'utf8');
   vm.runInContext(src, ctx, { filename: 'RoleView.gs' });
   return ctx;
@@ -142,4 +147,45 @@ test('the denial names no field, site or parent', () => {
   for (const word of banned) {
     assert.ok(!text.includes(String(word).toLowerCase()), `denial mentions "${word}"`);
   }
+});
+
+// Pp's decision of 2026-10-28: only the accounts listed in the Script Property
+// CROSS_SITE_EDITORS work across sites, and only if their role is admin. Since
+// editing the other site needs reading it, they read every site too.
+test('with CROSS_SITE_EDITORS empty or missing, nobody reads another site', () => {
+  const editor = fx.editorAccount();
+  for (const editors of [undefined, '', '  ']) {
+    const ctx = loadRoleView(editors);
+    const reply = vm.runInContext('roleViewReply', ctx)(editor, 'getFamilies', rawReply('getFamilies'));
+    assert.ok(reply.families.every((f) => f.hospitalCode === 'KCMH'), `editors=${JSON.stringify(editors)}`);
+    assert.equal(vm.runInContext('roleViewHasSite', ctx)(editor, 'SPR'), false);
+    assert.equal(vm.runInContext('roleViewHasSite', ctx)(editor, 'KCMH'), true);
+  }
+});
+
+test('a listed admin reads every site, still cut to the admin allow-list', () => {
+  const ctx = loadRoleView(' someone@example.test, EDITOR.KCMH@example.test ');
+  const editor = fx.editorAccount();
+  const reply = JSON.parse(JSON.stringify(vm.runInContext('roleViewReply', ctx)(editor, 'getAssessments', rawReply('getAssessments'))));
+  assert.deepEqual([...new Set(reply.assessments.map((a) => a.famId.split('-')[1]))].sort(), ['KCMH', 'SPR']);
+  for (const a of reply.assessments) {
+    for (const k of Object.keys(a)) assert.ok(EXPECTED_FIELDS.admin.assessment.includes(k), k);
+  }
+  const hasSite = vm.runInContext('roleViewHasSite', ctx);
+  assert.equal(hasSite(editor, 'SPR'), true);
+  assert.equal(hasSite(editor, ''), false, 'a row with no site stays out, even for the editor');
+  const blank = vm.runInContext('roleViewReply', ctx)(editor, 'getFamilies',
+    { status: 'ok', families: [{ ...fx.siteRecords('SPR').families[0], hospitalCode: '' }] });
+  assert.equal(blank.families.length, 0);
+});
+
+test('a listed email gives nothing extra unless the role is admin', () => {
+  const ctx = loadRoleView('nurse.kcmh@example.test, admin.spr@example.test');
+  const nurse = fx.accounts().find((a) => a.role === 'nurse' && a.hospitalCode === 'KCMH');
+  const plainAdmin = fx.accounts().find((a) => a.role === 'admin' && a.hospitalCode === 'KCMH');
+  const hasSite = vm.runInContext('roleViewHasSite', ctx);
+  assert.equal(hasSite(nurse, 'SPR'), false);
+  assert.equal(hasSite(plainAdmin, 'SPR'), false, 'an admin not on the list stays on its own site');
+  const reply = vm.runInContext('roleViewReply', ctx)(nurse, 'getFamilies', rawReply('getFamilies'));
+  assert.ok(reply.families.every((f) => f.hospitalCode === 'KCMH'));
 });

@@ -159,7 +159,11 @@ list names a field no screen reads. They are the same for all three roles:
 - **Note:** `noteId`, `famId`, `date`, `text`, `by`
 - **Care plan item:** `itemIdx`, `checked`, `by`, `at`
 
-Rows from another site are never sent, to any role, admin included.
+Rows from another site are never sent, to any role, admin included. The one
+exception (Pp, 2026-10-28): an admin whose email is in the Script Property
+`CROSS_SITE_EDITORS` reads, writes and deletes at every site. With the property
+empty, nobody does. Each backend repo runs the same tests before a deploy
+(see its README).
 
 - [ ] Open DevTools → Network, log in, and capture the raw JSON from
   `getFamilies` and `getAssessments` (and any `openFamily()` lazy-load calls:

@@ -138,21 +138,39 @@ The hospital-specific data-serving GAS backends (`getFamilies`,
 is. That means this round can't be done from source alone; it needs a live
 DevTools Network-tab capture compared against what the UI actually renders.
 
+**Since 2026-10-27 (PSS-11) the allow-lists live in `gas/RoleView.gs`.** Each
+hospital backend's `doPost` must send every data reply through
+`roleViewReply(user, action, reply)` and every refusal through
+`roleViewDenied()`. Before a backend deploy, run the handler-level test against
+that backend's code file; it reads the raw JSON of every action for nurse,
+doctor and admin at both sites:
+
+```bash
+PSS_BACKEND=path/to/Code.gs node --test "tests/*.test.cjs"
+```
+
+The expected lists are pinned in `tests/expected.cjs`, and a test fails when a
+list names a field no screen reads. They are the same for all three roles:
+
+- **Family:** `famId`, `hospitalCode`, `bed`, `infantId`, `ga`, `bw`, `admitDate`, `dx`
+- **Assessment:** `assId`, `famId`, `date`, `total`, `ssScore`, `iaScore`,
+  `prScore`, `scScore`, `notes`, `by`, and the 26 item answers `ss1`…`sc5`
+- **Intervention:** `intervId`, `famId`, `date`, `kind`, `note`, `by`
+- **Note:** `noteId`, `famId`, `date`, `text`, `by`
+- **Care plan item:** `itemIdx`, `checked`, `by`, `at`
+
+Rows from another site are never sent, to any role, admin included. The one
+exception (Pp, 2026-10-28): an admin whose email is in the Script Property
+`CROSS_SITE_EDITORS` reads, writes and deletes at every site. With the property
+empty, nobody does. Each backend repo runs the same tests before a deploy
+(see its README).
+
 - [ ] Open DevTools → Network, log in, and capture the raw JSON from
   `getFamilies` and `getAssessments` (and any `openFamily()` lazy-load calls:
   interventions/notes/care-plan).
-- [ ] Diff every field in that JSON against what the frontend actually reads.
-  As of this audit, the frontend only ever accesses these fields — anything
-  the backend sends beyond this list is over-fetching and should be trimmed
-  server-side, not just left unrendered:
-  - **Family record:** `famId`, `hospitalCode`, `name`, `parentName`,
-    `initials`, `infantId`, `dx`, `ga`, `bw`, `bed`, `bedHistory`,
-    `admitDate`, `dayAdmit`
-  - **Assessment record:** `assId`, `famId`, `date`, `assessedBy`, `by`,
-    `notes`, `ssScore`, `iaScore`, `prScore`, `scScore`, `subTotals`, `total`
-  - (Re-run `grep -ohE "\bfam\.[a-zA-Z_]+" screens.jsx app.jsx components.jsx
-    | sort -u` and the equivalent for `a\.`/`ass.` to regenerate this list
-    after any screen changes — it drifts.)
+- [ ] Diff every field in that JSON against the lists above. Anything the
+  backend sends beyond them means that backend was deployed without
+  `RoleView.gs` wired in.
 - [ ] Specifically check for other-family/other-patient data in a single
   response — a `getFamilies` call should only ever return the caller's own
   `hospitalCode`, never a cross-hospital dump.

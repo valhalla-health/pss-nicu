@@ -44,3 +44,8 @@ jobs:
 
       - name: Static checks
         run: node tools/ci-verify.cjs
+
+      # gas/RoleView.gs allow-lists. The handler-level suite needs a hospital
+      # backend's code (PSS_BACKEND), which is not in this repo, so CI skips it.
+      - name: Role-view tests
+        run: node --test "tests/*.test.cjs"

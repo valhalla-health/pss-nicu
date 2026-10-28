@@ -3,7 +3,7 @@
 A change reaches a test deployment first, then KCMH, and reaches SPR only after KCMH has run it for
 **7 days** with no new failed run. Every step names the version it replaces as its rollback target.
 
-Written 2026-10-28 for NF-05 in Pp's apply list ("same ladder for PSS:NICU's two sites"). **Nothing
+Written 2026-10-28 for NF-05 in Pp's apply list, the staged release for PSS:NICU's two sites. **Nothing
 in it runs yet:** the test deployment, its Sheet and its accounts are Pp's one-time setup at the end.
 The number of days, and the questions marked *Pp* below, are hers to set.
 
